@@ -475,7 +475,7 @@ jobs:
       - run:
           name: Run Unit Tests
           working_directory: charts/consul
-          command: bats --jobs 4 ./test/unit
+          command: bats --filter 'vault gossip annotations are set when gossip encryption enabled' ./test/unit
 
   acceptance:
     environment:
