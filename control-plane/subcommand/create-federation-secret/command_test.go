@@ -14,6 +14,7 @@ import (
 
 	"github.com/hashicorp/consul-k8s/control-plane/helper/test"
 	"github.com/hashicorp/consul-k8s/control-plane/subcommand/common"
+	ktestutil "github.com/hashicorp/consul-k8s/control-plane/testutil"
 	"github.com/hashicorp/consul/api"
 	"github.com/hashicorp/consul/sdk/freeport"
 	"github.com/hashicorp/consul/sdk/testutil"
@@ -313,6 +314,8 @@ func TestRun_ACLs_K8SNamespaces_ResourcePrefixes(tt *testing.T) {
 			})
 			require.NoError(t, err)
 			defer a.Stop()
+			a.WaitForLeader(t)
+			a.WaitForActiveCARoot(t)
 
 			// Construct Consul client.
 			client, err := api.NewClient(&api.Config{
@@ -483,13 +486,11 @@ func TestRun_WaitsForMeshGatewayInstances(t *testing.T) {
 
 	// Set up Consul server with TLS.
 	caFile, certFile, keyFile := test.GenerateServerCerts(t)
-	a, err := testutil.NewTestServerConfigT(t, func(c *testutil.TestServerConfig) {
+	a := ktestutil.NewTestServer(t, func(c *testutil.TestServerConfig) {
 		c.CAFile = caFile
 		c.CertFile = certFile
 		c.KeyFile = keyFile
 	})
-	require.NoError(t, err)
-	defer a.Stop()
 
 	// Create a mesh gateway instance after a delay.
 	meshGWIP := "192.168.0.1"
@@ -551,13 +552,11 @@ func TestRun_MeshGatewayNoWANAddr(t *testing.T) {
 
 	// Set up Consul server with TLS.
 	caFile, certFile, keyFile := test.GenerateServerCerts(t)
-	a, err := testutil.NewTestServerConfigT(t, func(c *testutil.TestServerConfig) {
+	a := ktestutil.NewTestServer(t, func(c *testutil.TestServerConfig) {
 		c.CAFile = caFile
 		c.CertFile = certFile
 		c.KeyFile = keyFile
 	})
-	require.NoError(t, err)
-	defer a.Stop()
 	client, err := api.NewClient(&api.Config{
 		Address: a.HTTPSAddr,
 		Scheme:  "https",
@@ -621,14 +620,11 @@ func TestRun_MeshGatewayUniqueAddrs(tt *testing.T) {
 
 			// Set up Consul server with TLS.
 			caFile, certFile, keyFile := test.GenerateServerCerts(t)
-			a, err := testutil.NewTestServerConfigT(t, func(c *testutil.TestServerConfig) {
+			a := ktestutil.NewTestServer(t, func(c *testutil.TestServerConfig) {
 				c.CAFile = caFile
 				c.CertFile = certFile
 				c.KeyFile = keyFile
 			})
-			require.NoError(t, err)
-			defer a.Stop()
-
 			// Create mesh gateway instances.
 			client, err := api.NewClient(&api.Config{
 				Address: a.HTTPSAddr,
@@ -708,6 +704,8 @@ func TestRun_ReplicationSecretDelay(t *testing.T) {
 	})
 	require.NoError(t, err)
 	defer a.Stop()
+	a.WaitForLeader(t)
+	a.WaitForActiveCARoot(t)
 
 	// Construct Consul client.
 	client, err := api.NewClient(&api.Config{
@@ -832,13 +830,11 @@ func TestRun_UpdatesSecret(t *testing.T) {
 
 	// Set up Consul server with TLS.
 	caFile, certFile, keyFile := test.GenerateServerCerts(t)
-	a, err := testutil.NewTestServerConfigT(t, func(c *testutil.TestServerConfig) {
+	a := ktestutil.NewTestServer(t, func(c *testutil.TestServerConfig) {
 		c.CAFile = caFile
 		c.CertFile = certFile
 		c.KeyFile = keyFile
 	})
-	require.NoError(t, err)
-	defer a.Stop()
 
 	// Create a mesh gateway instance.
 	client, err := api.NewClient(&api.Config{
@@ -955,7 +951,7 @@ func TestRun_ConsulClientDelay(t *testing.T) {
 		defer wg.Done()
 		time.Sleep(500 * time.Millisecond)
 		var err error
-		a, err = testutil.NewTestServerConfigT(t, func(cfg *testutil.TestServerConfig) {
+		a = ktestutil.NewTestServer(t, func(cfg *testutil.TestServerConfig) {
 			cfg.CAFile = caFile
 			cfg.CertFile = certFile
 			cfg.KeyFile = keyFile
@@ -968,7 +964,6 @@ func TestRun_ConsulClientDelay(t *testing.T) {
 				Server:  randomPorts[5],
 			}
 		})
-		require.NoError(t, err)
 
 		// Construct Consul client.
 		client, err := api.NewClient(&api.Config{
@@ -1034,13 +1029,11 @@ func TestRun_Autoencrypt(t *testing.T) {
 
 	// Set up Consul server with TLS.
 	caFile, certFile, keyFile := test.GenerateServerCerts(t)
-	a, err := testutil.NewTestServerConfigT(t, func(c *testutil.TestServerConfig) {
+	a := ktestutil.NewTestServer(t, func(c *testutil.TestServerConfig) {
 		c.CAFile = caFile
 		c.CertFile = certFile
 		c.KeyFile = keyFile
 	})
-	require.NoError(t, err)
-	defer a.Stop()
 
 	// Create a mesh gateway instance.
 	client, err := api.NewClient(&api.Config{

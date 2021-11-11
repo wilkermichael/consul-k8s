@@ -8,8 +8,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hashicorp/consul-k8s/control-plane/testutil"
 	"github.com/hashicorp/consul/api"
-	"github.com/hashicorp/consul/sdk/testutil"
 	"github.com/hashicorp/consul/sdk/testutil/retry"
 	"github.com/hashicorp/go-hclog"
 	"github.com/stretchr/testify/require"
@@ -25,15 +25,7 @@ func TestConsulSyncer_register(t *testing.T) {
 	t.Parallel()
 	require := require.New(t)
 
-	// Set up server, client, syncer
-	a, err := testutil.NewTestServerConfigT(t, nil)
-	require.NoError(err)
-	defer a.Stop()
-
-	client, err := api.NewClient(&api.Config{
-		Address: a.HTTPAddr,
-	})
-	require.NoError(err)
+	client := testutil.NewTestServerClient(t, nil)
 
 	s, closer := testConsulSyncer(client)
 	defer closer()
@@ -72,15 +64,7 @@ func TestConsulSyncer_reapServiceInstance(t *testing.T) {
 			require := require.New(t)
 
 			// Set up server, client, syncer
-			a, err := testutil.NewTestServerConfigT(t, nil)
-			require.NoError(err)
-			defer a.Stop()
-
-			client, err := api.NewClient(&api.Config{
-				Address: a.HTTPAddr,
-			})
-			require.NoError(err)
-
+			client := testutil.NewTestServerClient(t, nil)
 			s, closer := testConsulSyncer(client)
 			defer closer()
 
@@ -103,7 +87,7 @@ func TestConsulSyncer_reapServiceInstance(t *testing.T) {
 			// Create an invalid service directly in Consul
 			svc := testRegistration(node, "bar", "default")
 			svc.Service.ID = serviceID(node, "bar2")
-			_, err = client.Catalog().Register(svc, nil)
+			_, err := client.Catalog().Register(svc, nil)
 			require.NoError(err)
 
 			// Valid service should exist
@@ -136,16 +120,7 @@ func TestConsulSyncer_reapService(t *testing.T) {
 	sourceK8sNamespaceAnnotations := []string{"", "other", "default"}
 	for _, k8sNS := range sourceK8sNamespaceAnnotations {
 		t.Run(k8sNS, func(tt *testing.T) {
-			// Set up server, client, syncer
-			a, err := testutil.NewTestServerConfigT(tt, nil)
-			require.NoError(tt, err)
-			defer a.Stop()
-
-			client, err := api.NewClient(&api.Config{
-				Address: a.HTTPAddr,
-			})
-			require.NoError(tt, err)
-
+			client := testutil.NewTestServerClient(tt, nil)
 			s, closer := testConsulSyncer(client)
 			defer closer()
 
@@ -158,7 +133,7 @@ func TestConsulSyncer_reapService(t *testing.T) {
 			// expect it to be deleted.
 			svc := testRegistration(ConsulSyncNodeName, "baz", "default")
 			svc.Service.Meta[ConsulK8SNS] = k8sNS
-			_, err = client.Catalog().Register(svc, nil)
+			_, err := client.Catalog().Register(svc, nil)
 			require.NoError(tt, err)
 
 			retry.Run(tt, func(r *retry.R) {
@@ -185,13 +160,7 @@ func TestConsulSyncer_reapService(t *testing.T) {
 func TestConsulSyncer_noReapingUntilInitialSync(t *testing.T) {
 	t.Parallel()
 
-	a, err := testutil.NewTestServerConfigT(t, nil)
-	require.NoError(t, err)
-	defer a.Stop()
-	client, err := api.NewClient(&api.Config{
-		Address: a.HTTPAddr,
-	})
-	require.NoError(t, err)
+	client := testutil.NewTestServerClient(t, nil)
 	s, closer := testConsulSyncerWithConfig(client, func(s *ConsulSyncer) {
 		// Set the sync period to 5ms so we know it will have run at least once
 		// after we wait 100ms.
@@ -203,7 +172,7 @@ func TestConsulSyncer_noReapingUntilInitialSync(t *testing.T) {
 	// synthetic sync node and has the sync-associated tag, we expect
 	// it to be deleted but not until the initial sync is performed.
 	svc := testRegistration(ConsulSyncNodeName, "baz", "default")
-	_, err = client.Catalog().Register(svc, nil)
+	_, err := client.Catalog().Register(svc, nil)
 	require.NoError(t, err)
 
 	// We wait until the syncer has had the time to delete the service.

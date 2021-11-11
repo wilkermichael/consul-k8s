@@ -12,6 +12,7 @@ import (
 	"testing"
 	"time"
 
+	ktestutil "github.com/hashicorp/consul-k8s/control-plane/testutil"
 	"github.com/hashicorp/consul/api"
 	"github.com/hashicorp/consul/sdk/freeport"
 	"github.com/hashicorp/consul/sdk/testutil"
@@ -41,10 +42,7 @@ func TestRunSignalHandlingRegistrationOnly(t *testing.T) {
 			tmpDir, configFile := createServicesTmpFile(t, servicesRegistration)
 			defer os.RemoveAll(tmpDir)
 
-			a, err := testutil.NewTestServerConfigT(t, nil)
-			require.NoError(t, err)
-			defer a.Stop()
-
+			a := ktestutil.NewTestServer(t, nil)
 			ui := cli.NewMockUi()
 			cmd := Command{
 				UI: ui,
@@ -152,16 +150,11 @@ func TestRunSignalHandlingAllProcessesEnabled(t *testing.T) {
 			tmpDir, configFile := createServicesTmpFile(t, servicesRegistration)
 			defer os.RemoveAll(tmpDir)
 
-			a, err := testutil.NewTestServerConfigT(t, nil)
-			require.NoError(t, err)
-			defer a.Stop()
-
+			a := ktestutil.NewTestServer(t, nil)
 			ui := cli.NewMockUi()
 			cmd := Command{
 				UI: ui,
 			}
-
-			require.NoError(t, err)
 
 			randomPorts := freeport.MustTake(1)
 			// Run async because we need to kill it when the test is over.
@@ -177,6 +170,7 @@ func TestRunSignalHandlingAllProcessesEnabled(t *testing.T) {
 			// Keep an open connection to the server by continuously sending bytes
 			// on the connection so it will have to be drained.
 			var conn net.Conn
+			var err error
 			retry.Run(t, func(r *retry.R) {
 				conn, err = net.Dial("tcp", fmt.Sprintf("127.0.0.1:%d", randomPorts[0]))
 				if err != nil {
@@ -410,10 +404,7 @@ func TestRun_ServicesRegistration(t *testing.T) {
 	tmpDir, configFile := createServicesTmpFile(t, servicesRegistration)
 	defer os.RemoveAll(tmpDir)
 
-	a, err := testutil.NewTestServerConfigT(t, nil)
-	require.NoError(t, err)
-	defer a.Stop()
-
+	a := ktestutil.NewTestServer(t, nil)
 	ui := cli.NewMockUi()
 	cmd := Command{
 		UI: ui,
@@ -469,7 +460,7 @@ func TestRun_ServicesRegistration_ConsulDown(t *testing.T) {
 
 	// Start the Consul agent after 500ms.
 	time.Sleep(500 * time.Millisecond)
-	a, err := testutil.NewTestServerConfigT(t, func(c *testutil.TestServerConfig) {
+	client := ktestutil.NewTestServerClient(t, func(c *testutil.TestServerConfig) {
 		c.Ports = &testutil.TestPortConfig{
 			DNS:     randomPorts[0],
 			HTTP:    randomPorts[1],
@@ -479,13 +470,6 @@ func TestRun_ServicesRegistration_ConsulDown(t *testing.T) {
 			Server:  randomPorts[5],
 		}
 	})
-	require.NoError(t, err)
-	defer a.Stop()
-
-	client, err := api.NewClient(&api.Config{
-		Address: a.HTTPAddr,
-	})
-	require.NoError(t, err)
 
 	// The services should be registered when the Consul agent comes up
 	retry.Run(t, func(r *retry.R) {
@@ -505,10 +489,7 @@ func TestRun_ConsulCommandFlags(t *testing.T) {
 	tmpDir, configFile := createServicesTmpFile(t, servicesRegistration)
 	defer os.RemoveAll(tmpDir)
 
-	a, err := testutil.NewTestServerConfigT(t, nil)
-	require.NoError(t, err)
-	defer a.Stop()
-
+	a := ktestutil.NewTestServer(t, nil)
 	ui := cli.NewMockUi()
 	cmd := Command{
 		UI: ui,

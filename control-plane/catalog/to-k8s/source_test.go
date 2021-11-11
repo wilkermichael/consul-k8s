@@ -6,8 +6,8 @@ import (
 	"testing"
 
 	toconsul "github.com/hashicorp/consul-k8s/control-plane/catalog/to-consul"
+	"github.com/hashicorp/consul-k8s/control-plane/testutil"
 	"github.com/hashicorp/consul/api"
-	"github.com/hashicorp/consul/sdk/testutil"
 	"github.com/hashicorp/consul/sdk/testutil/retry"
 	"github.com/hashicorp/go-hclog"
 	"github.com/stretchr/testify/require"
@@ -19,17 +19,10 @@ func TestSource_initServices(t *testing.T) {
 	require := require.New(t)
 
 	// Set up server, client
-	a, err := testutil.NewTestServerConfigT(t, nil)
-	require.NoError(err)
-	defer a.Stop()
-
-	client, err := api.NewClient(&api.Config{
-		Address: a.HTTPAddr,
-	})
-	require.NoError(err)
+	client := testutil.NewTestServerClient(t, nil)
 
 	// Create services before the source is running
-	_, err = client.Catalog().Register(testRegistration("hostA", "svcA", nil), nil)
+	_, err := client.Catalog().Register(testRegistration("hostA", "svcA", nil), nil)
 	require.NoError(err)
 	_, err = client.Catalog().Register(testRegistration("hostB", "svcA", nil), nil)
 	require.NoError(err)
@@ -63,22 +56,14 @@ func TestSource_prefix(t *testing.T) {
 	require := require.New(t)
 
 	// Set up server, client
-	a, err := testutil.NewTestServerConfigT(t, nil)
-	require.NoError(err)
-	defer a.Stop()
-
-	client, err := api.NewClient(&api.Config{
-		Address: a.HTTPAddr,
-	})
-	require.NoError(err)
-
+	client := testutil.NewTestServerClient(t, nil)
 	_, sink, closer := testSourceWithConfig(client, func(s *Source) {
 		s.Prefix = "foo-"
 	})
 	defer closer()
 
 	// Create services before the source is running
-	_, err = client.Catalog().Register(testRegistration("hostA", "svcA", nil), nil)
+	_, err := client.Catalog().Register(testRegistration("hostA", "svcA", nil), nil)
 	require.NoError(err)
 	_, err = client.Catalog().Register(testRegistration("hostB", "svcA", nil), nil)
 	require.NoError(err)
@@ -109,17 +94,9 @@ func TestSource_ignoreK8S(t *testing.T) {
 	require := require.New(t)
 
 	// Set up server, client
-	a, err := testutil.NewTestServerConfigT(t, nil)
-	require.NoError(err)
-	defer a.Stop()
-
-	client, err := api.NewClient(&api.Config{
-		Address: a.HTTPAddr,
-	})
-	require.NoError(err)
-
+	client := testutil.NewTestServerClient(t, nil)
 	// Create services before the source is running
-	_, err = client.Catalog().Register(testRegistration("hostA", "svcA", nil), nil)
+	_, err := client.Catalog().Register(testRegistration("hostA", "svcA", nil), nil)
 	require.NoError(err)
 	_, err = client.Catalog().Register(testRegistration("hostB", "svcA", nil), nil)
 	require.NoError(err)
@@ -153,17 +130,9 @@ func TestSource_deleteService(t *testing.T) {
 	require := require.New(t)
 
 	// Set up server, client
-	a, err := testutil.NewTestServerConfigT(t, nil)
-	require.NoError(err)
-	defer a.Stop()
-
-	client, err := api.NewClient(&api.Config{
-		Address: a.HTTPAddr,
-	})
-	require.NoError(err)
-
+	client := testutil.NewTestServerClient(t, nil)
 	// Create services before the source is running
-	_, err = client.Catalog().Register(testRegistration("hostA", "svcA", nil), nil)
+	_, err := client.Catalog().Register(testRegistration("hostA", "svcA", nil), nil)
 	require.NoError(err)
 	_, err = client.Catalog().Register(testRegistration("hostB", "svcA", nil), nil)
 	require.NoError(err)
@@ -214,17 +183,9 @@ func TestSource_deleteServiceInstance(t *testing.T) {
 	require := require.New(t)
 
 	// Set up server, client
-	a, err := testutil.NewTestServerConfigT(t, nil)
-	require.NoError(err)
-	defer a.Stop()
-
-	client, err := api.NewClient(&api.Config{
-		Address: a.HTTPAddr,
-	})
-	require.NoError(err)
-
+	client := testutil.NewTestServerClient(t, nil)
 	// Create services before the source is running
-	_, err = client.Catalog().Register(testRegistration("hostA", "svcA", nil), nil)
+	_, err := client.Catalog().Register(testRegistration("hostA", "svcA", nil), nil)
 	require.NoError(err)
 	_, err = client.Catalog().Register(testRegistration("hostB", "svcA", nil), nil)
 	require.NoError(err)

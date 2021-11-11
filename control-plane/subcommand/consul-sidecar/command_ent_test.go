@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
+	ktestutil "github.com/hashicorp/consul-k8s/control-plane/testutil"
 	"github.com/hashicorp/consul/api"
-	"github.com/hashicorp/consul/sdk/testutil"
 	"github.com/hashicorp/consul/sdk/testutil/retry"
 	"github.com/mitchellh/cli"
 	"github.com/stretchr/testify/require"
@@ -20,10 +20,7 @@ func TestRun_ServicesRegistration_Namespaces(t *testing.T) {
 	tmpDir, configFile := createServicesTmpFile(t, servicesRegistrationWithNamespaces)
 	defer os.RemoveAll(tmpDir)
 
-	a, err := testutil.NewTestServerConfigT(t, nil)
-	require.NoError(t, err)
-	defer a.Stop()
-
+	a := ktestutil.NewTestServer(t, nil)
 	ui := cli.NewMockUi()
 	cmd := Command{
 		UI: ui,

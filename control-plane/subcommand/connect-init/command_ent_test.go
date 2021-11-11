@@ -12,6 +12,7 @@ import (
 	"github.com/hashicorp/consul-k8s/control-plane/helper/test"
 	"github.com/hashicorp/consul-k8s/control-plane/namespaces"
 	"github.com/hashicorp/consul-k8s/control-plane/subcommand/common"
+	ktestutil "github.com/hashicorp/consul-k8s/control-plane/testutil"
 	"github.com/hashicorp/consul/api"
 	"github.com/hashicorp/consul/sdk/testutil"
 	"github.com/mitchellh/cli"
@@ -132,7 +133,7 @@ func TestRun_ServicePollingWithACLsAndTLSWithNamespaces(t *testing.T) {
 			var caFile, certFile, keyFile string
 			// Start Consul server with ACLs enabled and default deny policy.
 			masterToken := "b78d37c7-0ca7-5f4d-99ee-6d9975ce4586"
-			server, err := testutil.NewTestServerConfigT(t, func(cfg *testutil.TestServerConfig) {
+			server := ktestutil.NewTestServer(t, func(cfg *testutil.TestServerConfig) {
 				if c.acls {
 					cfg.ACL.Enabled = true
 					cfg.ACL.DefaultPolicy = "deny"
@@ -145,9 +146,6 @@ func TestRun_ServicePollingWithACLsAndTLSWithNamespaces(t *testing.T) {
 					cfg.KeyFile = keyFile
 				}
 			})
-			require.NoError(t, err)
-			defer server.Stop()
-			server.WaitForLeader(t)
 			cfg := &api.Config{
 				Scheme:    "http",
 				Address:   server.HTTPAddr,

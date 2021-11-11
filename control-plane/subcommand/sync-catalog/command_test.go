@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	ktestutil "github.com/hashicorp/consul-k8s/control-plane/testutil"
 	"github.com/hashicorp/consul/api"
 	"github.com/hashicorp/consul/sdk/testutil"
 	"github.com/hashicorp/consul/sdk/testutil/retry"
@@ -576,12 +577,7 @@ func TestRun_ToConsulChangingFlags(t *testing.T) {
 
 // Set up test consul agent and fake kubernetes cluster client
 func completeSetup(t *testing.T) (*fake.Clientset, *testutil.TestServer) {
-	k8s := fake.NewSimpleClientset()
-
-	svr, err := testutil.NewTestServerConfigT(t, nil)
-	require.NoError(t, err)
-
-	return k8s, svr
+	return fake.NewSimpleClientset(), ktestutil.NewTestServer(t, nil)
 }
 
 // This function starts the command asynchronously and returns a non-blocking chan.

@@ -12,8 +12,8 @@ import (
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/hashicorp/consul-k8s/control-plane/api/common"
 	"github.com/hashicorp/consul-k8s/control-plane/api/v1alpha1"
+	ktestutil "github.com/hashicorp/consul-k8s/control-plane/testutil"
 	capi "github.com/hashicorp/consul/api"
-	"github.com/hashicorp/consul/sdk/testutil"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -423,15 +423,8 @@ func TestConfigEntryControllers_createsConfigEntry(t *testing.T) {
 			s.AddKnownTypes(v1alpha1.GroupVersion, c.configEntryResource)
 			fakeClient := fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects(c.configEntryResource).Build()
 
-			consul, err := testutil.NewTestServerConfigT(t, nil)
-			req.NoError(err)
-			defer consul.Stop()
+			consulClient := ktestutil.NewTestServerClient(t, nil)
 
-			consul.WaitForServiceIntentions(t)
-			consulClient, err := capi.NewClient(&capi.Config{
-				Address: consul.HTTPAddr,
-			})
-			req.NoError(err)
 			for _, configEntry := range c.consulPrereqs {
 				written, _, err := consulClient.ConfigEntries().Set(configEntry, nil)
 				req.NoError(err)
@@ -895,16 +888,7 @@ func TestConfigEntryControllers_updatesConfigEntry(t *testing.T) {
 			s := runtime.NewScheme()
 			s.AddKnownTypes(v1alpha1.GroupVersion, c.configEntryResource)
 			fakeClient := fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects(c.configEntryResource).Build()
-
-			consul, err := testutil.NewTestServerConfigT(t, nil)
-			req.NoError(err)
-			defer consul.Stop()
-
-			consul.WaitForServiceIntentions(t)
-			consulClient, err := capi.NewClient(&capi.Config{
-				Address: consul.HTTPAddr,
-			})
-			req.NoError(err)
+			consulClient := ktestutil.NewTestServerClient(t, nil)
 
 			// Create any prereqs.
 			for _, configEntry := range c.consulPrereqs {
@@ -928,12 +912,12 @@ func TestConfigEntryControllers_updatesConfigEntry(t *testing.T) {
 					Name:      c.configEntryResource.KubernetesName(),
 				}
 				// First get it so we have the latest revision number.
-				err = fakeClient.Get(ctx, namespacedName, c.configEntryResource)
+				err := fakeClient.Get(ctx, namespacedName, c.configEntryResource)
 				req.NoError(err)
 
 				// Update the entry in Kube and run reconcile.
 				c.updateF(c.configEntryResource)
-				err := fakeClient.Update(ctx, c.configEntryResource)
+				err = fakeClient.Update(ctx, c.configEntryResource)
 				req.NoError(err)
 				r := c.reconciler(fakeClient, consulClient, logrtest.TestLogger{T: t})
 				resp, err := r.Reconcile(ctx, ctrl.Request{
@@ -1292,16 +1276,7 @@ func TestConfigEntryControllers_deletesConfigEntry(t *testing.T) {
 			s := runtime.NewScheme()
 			s.AddKnownTypes(v1alpha1.GroupVersion, c.configEntryResourceWithDeletion)
 			fakeClient := fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects(c.configEntryResourceWithDeletion).Build()
-
-			consul, err := testutil.NewTestServerConfigT(t, nil)
-			req.NoError(err)
-			defer consul.Stop()
-
-			consul.WaitForServiceIntentions(t)
-			consulClient, err := capi.NewClient(&capi.Config{
-				Address: consul.HTTPAddr,
-			})
-			req.NoError(err)
+			consulClient := ktestutil.NewTestServerClient(t, nil)
 
 			// Create any prereqs.
 			for _, configEntry := range c.consulPrereq {
@@ -1427,16 +1402,8 @@ func TestConfigEntryControllers_setsSyncedToTrue(t *testing.T) {
 
 	// The config entry exists in kube but its status will be nil.
 	fakeClient := fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects(svcDefaults).Build()
+	consulClient := ktestutil.NewTestServerClient(t, nil)
 
-	consul, err := testutil.NewTestServerConfigT(t, nil)
-	req.NoError(err)
-	defer consul.Stop()
-
-	consul.WaitForServiceIntentions(t)
-	consulClient, err := capi.NewClient(&capi.Config{
-		Address: consul.HTTPAddr,
-	})
-	req.NoError(err)
 	reconciler := &ServiceDefaultsController{
 		Client: fakeClient,
 		Log:    logrtest.TestLogger{T: t},
@@ -1448,7 +1415,7 @@ func TestConfigEntryControllers_setsSyncedToTrue(t *testing.T) {
 
 	// Create the resource in Consul to mimic that it was created
 	// successfully (but its status hasn't been updated).
-	_, _, err = consulClient.ConfigEntries().Set(svcDefaults.ToConsul(datacenterName), nil)
+	_, _, err := consulClient.ConfigEntries().Set(svcDefaults.ToConsul(datacenterName), nil)
 	require.NoError(t, err)
 
 	namespacedName := types.NamespacedName{
@@ -1504,16 +1471,7 @@ func TestConfigEntryControllers_doesNotCreateUnownedConfigEntry(t *testing.T) {
 			}
 			s.AddKnownTypes(v1alpha1.GroupVersion, svcDefaults)
 			fakeClient := fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects(svcDefaults).Build()
-
-			consul, err := testutil.NewTestServerConfigT(t, nil)
-			req.NoError(err)
-			defer consul.Stop()
-
-			consul.WaitForServiceIntentions(t)
-			consulClient, err := capi.NewClient(&capi.Config{
-				Address: consul.HTTPAddr,
-			})
-			req.NoError(err)
+			consulClient := ktestutil.NewTestServerClient(t, nil)
 
 			// We haven't run reconcile yet. We must create the config entry
 			// in Consul ourselves in a different datacenter.
@@ -1530,7 +1488,7 @@ func TestConfigEntryControllers_doesNotCreateUnownedConfigEntry(t *testing.T) {
 					Name:      svcDefaults.KubernetesName(),
 				}
 				// First get it so we have the latest revision number.
-				err = fakeClient.Get(ctx, namespacedName, svcDefaults)
+				err := fakeClient.Get(ctx, namespacedName, svcDefaults)
 				req.NoError(err)
 
 				// Attempt to create the entry in Kube and run reconcile.
@@ -1593,16 +1551,8 @@ func TestConfigEntryControllers_doesNotDeleteUnownedConfig(t *testing.T) {
 			}
 			s.AddKnownTypes(v1alpha1.GroupVersion, svcDefaultsWithDeletion)
 			fakeClient := fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects(svcDefaultsWithDeletion).Build()
+			consulClient := ktestutil.NewTestServerClient(t, nil)
 
-			consul, err := testutil.NewTestServerConfigT(t, nil)
-			req.NoError(err)
-			defer consul.Stop()
-
-			consul.WaitForServiceIntentions(t)
-			consulClient, err := capi.NewClient(&capi.Config{
-				Address: consul.HTTPAddr,
-			})
-			req.NoError(err)
 			reconciler := &ServiceDefaultsController{
 				Client: fakeClient,
 				Log:    logrtest.TestLogger{T: t},
@@ -1680,16 +1630,7 @@ func TestConfigEntryControllers_updatesStatusWhenDeleteFails(t *testing.T) {
 	}
 
 	fakeClient := fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects(defaults, splitter).Build()
-
-	consul, err := testutil.NewTestServerConfigT(t, nil)
-	require.NoError(t, err)
-	defer consul.Stop()
-
-	consul.WaitForServiceIntentions(t)
-	consulClient, err := capi.NewClient(&capi.Config{
-		Address: consul.HTTPAddr,
-	})
-	require.NoError(t, err)
+	consulClient := ktestutil.NewTestServerClient(t, nil)
 
 	logger := logrtest.TestLogger{T: t}
 
@@ -1817,15 +1758,7 @@ func TestConfigEntryController_Migration(t *testing.T) {
 			s.AddKnownTypes(v1alpha1.GroupVersion, &v1alpha1.ServiceDefaults{})
 
 			fakeClient := fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects(&c.KubeResource).Build()
-			consul, err := testutil.NewTestServerConfigT(t, nil)
-			require.NoError(t, err)
-			defer consul.Stop()
-
-			consul.WaitForServiceIntentions(t)
-			consulClient, err := capi.NewClient(&capi.Config{
-				Address: consul.HTTPAddr,
-			})
-			require.NoError(t, err)
+			consulClient := ktestutil.NewTestServerClient(t, nil)
 
 			// Create the service-defaults in Consul.
 			success, _, err := consulClient.ConfigEntries().Set(&c.ConsulResource, nil)

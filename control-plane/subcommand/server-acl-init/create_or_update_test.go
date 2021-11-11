@@ -3,6 +3,7 @@ package serveraclinit
 import (
 	"testing"
 
+	ktestutil "github.com/hashicorp/consul-k8s/control-plane/testutil"
 	"github.com/hashicorp/consul/api"
 	"github.com/hashicorp/consul/sdk/testutil"
 	"github.com/hashicorp/go-hclog"
@@ -28,12 +29,10 @@ func TestCreateOrUpdateACLPolicy_ErrorsIfDescriptionDoesNotMatch(t *testing.T) {
 
 	// Start Consul.
 	bootToken := "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
-	svr, err := testutil.NewTestServerConfigT(t, func(c *testutil.TestServerConfig) {
+	svr := ktestutil.NewTestServer(t, func(c *testutil.TestServerConfig) {
 		c.ACL.Enabled = true
 		c.ACL.Tokens.Master = bootToken
 	})
-	require.NoError(err)
-	svr.WaitForLeader(t)
 
 	// Get a Consul client.
 	consul, err := api.NewClient(&api.Config{

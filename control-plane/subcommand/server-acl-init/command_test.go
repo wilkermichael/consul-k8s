@@ -15,6 +15,7 @@ import (
 	"testing"
 	"time"
 
+	ktestutil "github.com/hashicorp/consul-k8s/control-plane/testutil"
 	"github.com/hashicorp/consul/api"
 	"github.com/hashicorp/consul/sdk/freeport"
 	"github.com/hashicorp/consul/sdk/testutil"
@@ -1202,6 +1203,9 @@ func TestRun_DelayedServers(t *testing.T) {
 		time.Sleep(time.Duration(delay) * time.Millisecond)
 
 		var err error
+		// NOTE: Now using ktestutil.NewTestServer because we don't want
+		// to wait for ACLs to be bootstrapped (which that function does)
+		// since we're the ones bootstrapping ACLs here.
 		srv, err = testutil.NewTestServerConfigT(t, func(c *testutil.TestServerConfig) {
 			c.ACL.Enabled = true
 
@@ -1845,16 +1849,13 @@ func TestRun_HTTPS(t *testing.T) {
 	k8s := fake.NewSimpleClientset()
 
 	caFile, certFile, keyFile := test.GenerateServerCerts(t)
-
-	srv, err := testutil.NewTestServerConfigT(t, func(c *testutil.TestServerConfig) {
+	srv := ktestutil.NewTestServer(t, func(c *testutil.TestServerConfig) {
 		c.ACL.Enabled = true
 
 		c.CAFile = caFile
 		c.CertFile = certFile
 		c.KeyFile = keyFile
 	})
-	require.NoError(err)
-	defer srv.Stop()
 
 	// Run the command.
 	ui := cli.NewMockUi()
@@ -2090,13 +2091,9 @@ func TestRun_GatewayErrors(t *testing.T) {
 // Set up test consul agent and kubernetes cluster.
 func completeSetup(t *testing.T) (*fake.Clientset, *testutil.TestServer) {
 	k8s := fake.NewSimpleClientset()
-
-	svr, err := testutil.NewTestServerConfigT(t, func(c *testutil.TestServerConfig) {
+	svr := ktestutil.NewTestServer(t, func(c *testutil.TestServerConfig) {
 		c.ACL.Enabled = true
 	})
-	require.NoError(t, err)
-	svr.WaitForLeader(t)
-
 	return k8s, svr
 }
 
@@ -2161,7 +2158,6 @@ func replicatedSetup(t *testing.T, bootToken string) (*fake.Clientset, *api.Clie
 	var aclReplicationToken string
 	if bootToken == "" {
 		primaryK8s := fake.NewSimpleClientset()
-		require.NoError(t, err)
 
 		// Run the command to bootstrap ACLs
 		primaryUI := cli.NewMockUi()

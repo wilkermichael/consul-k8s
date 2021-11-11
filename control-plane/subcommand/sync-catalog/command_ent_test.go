@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	ktestutil "github.com/hashicorp/consul-k8s/control-plane/testutil"
 	"github.com/hashicorp/consul/api"
 	"github.com/hashicorp/consul/sdk/testutil"
 	"github.com/hashicorp/consul/sdk/testutil/retry"
@@ -44,7 +45,6 @@ func TestRun_ToConsulSingleDestinationNamespace(t *testing.T) {
 	for _, c := range cases {
 		t.Run(c.Name, func(tt *testing.T) {
 			k8s, testServer := completeSetupEnterprise(tt)
-			defer testServer.Stop()
 
 			// Run the command.
 			ui := cli.NewMockUi()
@@ -182,7 +182,6 @@ func TestRun_ToConsulMirroringNamespaces(t *testing.T) {
 	for name, c := range cases {
 		t.Run(name, func(tt *testing.T) {
 			k8s, testServer := completeSetupEnterprise(tt)
-			defer testServer.Stop()
 
 			// Run the command.
 			ui := cli.NewMockUi()
@@ -456,7 +455,6 @@ func TestRun_ToConsulChangingNamespaceFlags(t *testing.T) {
 	for name, c := range cases {
 		t.Run(name, func(tt *testing.T) {
 			k8s, testServer := completeSetupEnterprise(tt)
-			defer testServer.Stop()
 			ui := cli.NewMockUi()
 			consulClient, err := api.NewClient(&api.Config{
 				Address: testServer.HTTPAddr,
@@ -622,11 +620,9 @@ func TestRun_ToConsulNamespacesACLs(t *testing.T) {
 			require.NoError(tt, err)
 
 			// Set up consul server
-			a, err := testutil.NewTestServerConfigT(tt, func(client *testutil.TestServerConfig) {
+			a := ktestutil.NewTestServer(tt, func(client *testutil.TestServerConfig) {
 				client.ACL.Enabled = true
 			})
-			require.NoError(tt, err)
-			defer a.Stop()
 
 			// Set up a client for bootstrapping
 			bootClient, err := api.NewClient(&api.Config{
@@ -738,7 +734,6 @@ func TestRun_ToConsulNamespacesACLs(t *testing.T) {
 // Set up test consul agent and fake kubernetes cluster client
 func completeSetupEnterprise(t *testing.T) (*fake.Clientset, *testutil.TestServer) {
 	k8s := fake.NewSimpleClientset()
-	svr, err := testutil.NewTestServerConfigT(t, nil)
-	require.NoError(t, err)
+	svr := ktestutil.NewTestServer(t, nil)
 	return k8s, svr
 }

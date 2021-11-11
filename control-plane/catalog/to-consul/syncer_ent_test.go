@@ -5,8 +5,8 @@ package catalog
 import (
 	"testing"
 
+	"github.com/hashicorp/consul-k8s/control-plane/testutil"
 	"github.com/hashicorp/consul/api"
-	"github.com/hashicorp/consul/sdk/testutil"
 	"github.com/hashicorp/consul/sdk/testutil/retry"
 	"github.com/stretchr/testify/require"
 )
@@ -15,14 +15,7 @@ import (
 func TestConsulSyncer_ConsulNamespaces(t *testing.T) {
 	t.Parallel()
 
-	a, err := testutil.NewTestServerConfigT(t, nil)
-	require.NoError(t, err)
-	defer a.Stop()
-
-	client, err := api.NewClient(&api.Config{
-		Address: a.HTTPAddr,
-	})
-	require.NoError(t, err)
+	client := testutil.NewTestServerClient(t, nil)
 
 	s, closer := testConsulSyncerWithConfig(client, func(s *ConsulSyncer) {
 		s.EnableNamespaces = true
@@ -66,14 +59,7 @@ func TestConsulSyncer_ConsulNamespaces(t *testing.T) {
 func TestConsulSyncer_ReapConsulNamespace(t *testing.T) {
 	t.Parallel()
 
-	a, err := testutil.NewTestServerConfigT(t, nil)
-	require.NoError(t, err)
-	defer a.Stop()
-
-	client, err := api.NewClient(&api.Config{
-		Address: a.HTTPAddr,
-	})
-	require.NoError(t, err)
+	client := testutil.NewTestServerClient(t, nil)
 
 	s, closer := testConsulSyncerWithConfig(client, func(s *ConsulSyncer) {
 		s.EnableNamespaces = true
@@ -135,13 +121,8 @@ func TestConsulSyncer_ReapConsulNamespace(t *testing.T) {
 func TestConsulSyncer_reapServiceInstanceNamespacesEnabled(t *testing.T) {
 	t.Parallel()
 
-	a, err := testutil.NewTestServerConfigT(t, nil)
-	require.NoError(t, err)
-	defer a.Stop()
+	client := testutil.NewTestServerClient(t, nil)
 
-	client, err := api.NewClient(&api.Config{
-		Address: a.HTTPAddr,
-	})
 	s, closer := testConsulSyncerWithConfig(client, func(s *ConsulSyncer) {
 		s.EnableNamespaces = true
 		s.ConsulNodeServicesClient = &NamespacesNodeServicesClient{
@@ -157,7 +138,7 @@ func TestConsulSyncer_reapServiceInstanceNamespacesEnabled(t *testing.T) {
 	})
 
 	// Create an invalid instance service directly in Consul.
-	_, _, err = client.Namespaces().Create(&api.Namespace{
+	_, _, err := client.Namespaces().Create(&api.Namespace{
 		Name: "foo",
 	}, nil)
 	require.NoError(t, err)

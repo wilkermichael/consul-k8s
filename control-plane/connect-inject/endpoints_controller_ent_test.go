@@ -14,6 +14,7 @@ import (
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/hashicorp/consul-k8s/control-plane/helper/test"
 	"github.com/hashicorp/consul-k8s/control-plane/namespaces"
+	ktestutil "github.com/hashicorp/consul-k8s/control-plane/testutil"
 	"github.com/hashicorp/consul/api"
 	"github.com/hashicorp/consul/sdk/testutil"
 	"github.com/stretchr/testify/require"
@@ -208,13 +209,9 @@ func TestReconcileCreateEndpointWithNamespaces(t *testing.T) {
 			fakeClient := fake.NewClientBuilder().WithRuntimeObjects(k8sObjects...).Build()
 
 			// Create test Consul server.
-			consul, err := testutil.NewTestServerConfigT(t, func(c *testutil.TestServerConfig) {
+			consul := ktestutil.NewTestServer(t, func(c *testutil.TestServerConfig) {
 				c.NodeName = nodeName
 			})
-			require.NoError(t, err)
-			defer consul.Stop()
-			consul.WaitForLeader(t)
-
 			cfg := &api.Config{
 				Address:   consul.HTTPAddr,
 				Namespace: test.ExpConsulNS,
@@ -1177,16 +1174,13 @@ func TestReconcileUpdateEndpointWithNamespaces(t *testing.T) {
 				fakeClient := fake.NewClientBuilder().WithRuntimeObjects(k8sObjects...).Build()
 
 				adminToken := "123e4567-e89b-12d3-a456-426614174000"
-				consul, err := testutil.NewTestServerConfigT(t, func(c *testutil.TestServerConfig) {
+				consul := ktestutil.NewTestServer(t, func(c *testutil.TestServerConfig) {
 					if tt.enableACLs {
 						c.ACL.Enabled = true
 						c.ACL.Tokens.Master = adminToken
 					}
 					c.NodeName = nodeName
 				})
-				require.NoError(t, err)
-				defer consul.Stop()
-				consul.WaitForSerfCheck(t)
 
 				cfg := &api.Config{
 					Scheme:    "http",
@@ -1511,17 +1505,13 @@ func TestReconcileDeleteEndpointWithNamespaces(t *testing.T) {
 
 				// Create test Consul server.
 				adminToken := "123e4567-e89b-12d3-a456-426614174000"
-				consul, err := testutil.NewTestServerConfigT(t, func(c *testutil.TestServerConfig) {
+				consul := ktestutil.NewTestServer(t, func(c *testutil.TestServerConfig) {
 					if tt.enableACLs {
 						c.ACL.Enabled = true
 						c.ACL.Tokens.Master = adminToken
 					}
 					c.NodeName = nodeName
 				})
-				require.NoError(t, err)
-				defer consul.Stop()
-
-				consul.WaitForLeader(t)
 				cfg := &api.Config{
 					Address:   consul.HTTPAddr,
 					Namespace: ts.ExpConsulNS,

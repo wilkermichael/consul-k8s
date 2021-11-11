@@ -8,8 +8,8 @@ import (
 	"testing"
 	"time"
 
+	ktestutil "github.com/hashicorp/consul-k8s/control-plane/testutil"
 	"github.com/hashicorp/consul/api"
-	"github.com/hashicorp/consul/sdk/testutil"
 	"github.com/mitchellh/cli"
 	"github.com/stretchr/testify/require"
 )
@@ -49,11 +49,7 @@ func TestRun_FlagValidation(t *testing.T) {
 func TestRun_PartitionCreate(t *testing.T) {
 	partitionName := "test-partition"
 
-	server, err := testutil.NewTestServerConfigT(t, nil)
-	require.NoError(t, err)
-	server.WaitForLeader(t)
-	defer server.Stop()
-
+	server := ktestutil.NewTestServer(t, nil)
 	consul, err := api.NewClient(&api.Config{
 		Address: server.HTTPAddr,
 	})
@@ -83,11 +79,7 @@ func TestRun_PartitionCreate(t *testing.T) {
 func TestRun_PartitionExists(t *testing.T) {
 	partitionName := "test-partition"
 
-	server, err := testutil.NewTestServerConfigT(t, nil)
-	require.NoError(t, err)
-	server.WaitForLeader(t)
-	defer server.Stop()
-
+	server := ktestutil.NewTestServer(t, nil)
 	consul, err := api.NewClient(&api.Config{
 		Address: server.HTTPAddr,
 	})
@@ -122,8 +114,7 @@ func TestRun_PartitionExists(t *testing.T) {
 func TestRun_ExitsAfterTimeout(t *testing.T) {
 	partitionName := "test-partition"
 
-	server, err := testutil.NewTestServerConfigT(t, nil)
-	require.NoError(t, err)
+	server := ktestutil.NewTestServer(t, nil)
 
 	ui := cli.NewMockUi()
 	cmd := Command{

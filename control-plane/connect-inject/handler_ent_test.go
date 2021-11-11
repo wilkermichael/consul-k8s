@@ -9,6 +9,7 @@ import (
 
 	"github.com/deckarep/golang-set"
 	logrtest "github.com/go-logr/logr/testing"
+	ktestutil "github.com/hashicorp/consul-k8s/control-plane/testutil"
 	"github.com/hashicorp/consul/api"
 	"github.com/hashicorp/consul/sdk/testutil"
 	"github.com/hashicorp/consul/sdk/testutil/retry"
@@ -234,16 +235,7 @@ func TestHandler_MutateWithNamespaces(t *testing.T) {
 			require := require.New(t)
 
 			// Set up consul server
-			a, err := testutil.NewTestServerConfigT(t, nil)
-			require.NoError(err)
-			a.WaitForSerfCheck(t)
-			defer a.Stop()
-
-			// Set up consul client
-			client, err := api.NewClient(&api.Config{
-				Address: a.HTTPAddr,
-			})
-			require.NoError(err)
+			client := ktestutil.NewTestServerClient(t, nil)
 
 			// Add the client to the test's handler
 			tt.Handler.ConsulClient = client
@@ -496,11 +488,9 @@ func TestHandler_MutateWithNamespaces_ACLs(t *testing.T) {
 	for _, tt := range cases {
 		t.Run(tt.Name, func(t *testing.T) {
 			// Set up consul server
-			a, err := testutil.NewTestServerConfigT(t, func(c *testutil.TestServerConfig) {
+			a := ktestutil.NewTestServer(t, func(c *testutil.TestServerConfig) {
 				c.ACL.Enabled = true
 			})
-			a.WaitForSerfCheck(t)
-			defer a.Stop()
 
 			// Set up a client for bootstrapping
 			bootClient, err := api.NewClient(&api.Config{
@@ -624,20 +614,11 @@ func TestHandler_MutateWithNamespaces_Annotation(t *testing.T) {
 			require := require.New(t)
 
 			// Set up consul server
-			a, err := testutil.NewTestServerConfigT(t, nil)
-			require.NoError(err)
-			a.WaitForSerfCheck(t)
-			defer a.Stop()
+			client := ktestutil.NewTestServerClient(t, nil)
 
 			s := runtime.NewScheme()
 			s.AddKnownTypes(schema.GroupVersion{Group: "", Version: "v1"}, &corev1.Pod{})
 			decoder, err := admission.NewDecoder(s)
-			require.NoError(err)
-
-			// Set up consul client
-			client, err := api.NewClient(&api.Config{
-				Address: a.HTTPAddr,
-			})
 			require.NoError(err)
 
 			handler := Handler{

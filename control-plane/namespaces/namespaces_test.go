@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	ktestutil "github.com/hashicorp/consul-k8s/control-plane/testutil"
 	capi "github.com/hashicorp/consul/api"
 	"github.com/hashicorp/consul/sdk/testutil"
 	"github.com/hashicorp/serf/testutil/retry"
@@ -30,14 +31,11 @@ func TestEnsureExists_AlreadyExists(tt *testing.T) {
 			ns := "ns"
 			masterToken := "master"
 
-			consul, err := testutil.NewTestServerConfigT(t, func(cfg *testutil.TestServerConfig) {
+			consul := ktestutil.NewTestServer(t, func(cfg *testutil.TestServerConfig) {
 				cfg.ACL.Enabled = c.ACLsEnabled
 				cfg.ACL.DefaultPolicy = "deny"
 				cfg.ACL.Tokens.Master = masterToken
 			})
-			req.NoError(err)
-			defer consul.Stop()
-			consul.WaitForSerfCheck(t)
 			consulClient, err := capi.NewClient(&capi.Config{
 				Address: consul.HTTPAddr,
 				Token:   masterToken,
@@ -101,15 +99,11 @@ func TestEnsureExists_CreatesNS(tt *testing.T) {
 			ns := "ns"
 			masterToken := "master"
 
-			consul, err := testutil.NewTestServerConfigT(t, func(cfg *testutil.TestServerConfig) {
+			consul := ktestutil.NewTestServer(t, func(cfg *testutil.TestServerConfig) {
 				cfg.ACL.Enabled = c.ACLsEnabled
 				cfg.ACL.DefaultPolicy = "deny"
 				cfg.ACL.Tokens.Master = masterToken
 			})
-			req.NoError(err)
-			defer consul.Stop()
-			consul.WaitForLeader(t)
-
 			consulClient, err := capi.NewClient(&capi.Config{
 				Address: consul.HTTPAddr,
 				Token:   masterToken,

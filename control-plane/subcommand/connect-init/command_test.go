@@ -13,6 +13,7 @@ import (
 
 	"github.com/hashicorp/consul-k8s/control-plane/helper/test"
 	"github.com/hashicorp/consul-k8s/control-plane/subcommand/common"
+	ktestutil "github.com/hashicorp/consul-k8s/control-plane/testutil"
 	"github.com/hashicorp/consul/api"
 	"github.com/hashicorp/consul/sdk/testutil"
 	"github.com/mitchellh/cli"
@@ -119,7 +120,7 @@ func TestRun_ServicePollingWithACLsAndTLS(t *testing.T) {
 			var caFile, certFile, keyFile string
 			// Start Consul server with ACLs enabled and default deny policy.
 			masterToken := "b78d37c7-0ca7-5f4d-99ee-6d9975ce4586"
-			server, err := testutil.NewTestServerConfigT(t, func(c *testutil.TestServerConfig) {
+			server := ktestutil.NewTestServer(t, func(c *testutil.TestServerConfig) {
 				c.ACL.Enabled = true
 				c.ACL.DefaultPolicy = "deny"
 				c.ACL.Tokens.Master = masterToken
@@ -130,9 +131,6 @@ func TestRun_ServicePollingWithACLsAndTLS(t *testing.T) {
 					c.KeyFile = keyFile
 				}
 			})
-			require.NoError(t, err)
-			defer server.Stop()
-			server.WaitForLeader(t)
 			cfg := &api.Config{
 				Scheme:  "http",
 				Address: server.HTTPAddr,
@@ -231,7 +229,7 @@ func TestRun_ServicePollingOnly(t *testing.T) {
 
 			var caFile, certFile, keyFile string
 			// Start Consul server with TLS enabled if required.
-			server, err := testutil.NewTestServerConfigT(t, func(c *testutil.TestServerConfig) {
+			server := ktestutil.NewTestServer(t, func(c *testutil.TestServerConfig) {
 				if tt.tls {
 					caFile, certFile, keyFile = test.GenerateServerCerts(t)
 					c.CAFile = caFile
@@ -239,9 +237,6 @@ func TestRun_ServicePollingOnly(t *testing.T) {
 					c.KeyFile = keyFile
 				}
 			})
-			require.NoError(t, err)
-			defer server.Stop()
-			server.WaitForLeader(t)
 
 			// Get the Consul Client.
 			cfg := &api.Config{
@@ -445,10 +440,7 @@ func TestRun_ServicePollingErrors(t *testing.T) {
 			})
 
 			// Start Consul server.
-			server, err := testutil.NewTestServerConfigT(t, nil)
-			require.NoError(t, err)
-			defer server.Stop()
-			server.WaitForLeader(t)
+			server := ktestutil.NewTestServer(t, nil)
 			consulClient, err := api.NewClient(&api.Config{Address: server.HTTPAddr})
 			require.NoError(t, err)
 
@@ -482,10 +474,7 @@ func TestRun_RetryServicePolling(t *testing.T) {
 	proxyFile := common.WriteTempFile(t, "")
 
 	// Start Consul server.
-	server, err := testutil.NewTestServerConfigT(t, nil)
-	require.NoError(t, err)
-	defer server.Stop()
-	server.WaitForLeader(t)
+	server := ktestutil.NewTestServer(t, nil)
 	consulClient, err := api.NewClient(&api.Config{Address: server.HTTPAddr})
 	require.NoError(t, err)
 
@@ -529,10 +518,7 @@ func TestRun_InvalidProxyFile(t *testing.T) {
 	randFileName := fmt.Sprintf("/foo/%d/%d", rand.Int(), rand.Int())
 
 	// Start Consul server.
-	server, err := testutil.NewTestServerConfigT(t, nil)
-	require.NoError(t, err)
-	defer server.Stop()
-	server.WaitForLeader(t)
+	server := ktestutil.NewTestServer(t, nil)
 	consulClient, err := api.NewClient(&api.Config{Address: server.HTTPAddr})
 	require.NoError(t, err)
 

@@ -12,6 +12,7 @@ import (
 	"github.com/hashicorp/consul-k8s/control-plane/helper/cert"
 	"github.com/hashicorp/consul-k8s/control-plane/helper/go-discover/mocks"
 	"github.com/hashicorp/consul-k8s/control-plane/helper/test"
+	ktestutil "github.com/hashicorp/consul-k8s/control-plane/testutil"
 	"github.com/hashicorp/consul/api"
 	"github.com/hashicorp/consul/sdk/freeport"
 	"github.com/hashicorp/consul/sdk/testutil"
@@ -79,7 +80,7 @@ func TestRun(t *testing.T) {
 	}
 
 	// start the test server
-	a, err := testutil.NewTestServerConfigT(t, func(c *testutil.TestServerConfig) {
+	a := ktestutil.NewTestServer(t, func(c *testutil.TestServerConfig) {
 		c.Connect = map[string]interface{}{
 			"enabled": true,
 		}
@@ -87,8 +88,6 @@ func TestRun(t *testing.T) {
 		c.CertFile = certFile
 		c.KeyFile = keyFile
 	})
-	require.NoError(t, err)
-	defer a.Stop()
 
 	// run the command
 	exitCode := cmd.Run([]string{
@@ -148,7 +147,7 @@ func TestRun_ConsulServerAvailableLater(t *testing.T) {
 	go func() {
 		// start the test server after 100ms
 		time.Sleep(100 * time.Millisecond)
-		a, err = testutil.NewTestServerConfigT(t, func(c *testutil.TestServerConfig) {
+		a = ktestutil.NewTestServer(t, func(c *testutil.TestServerConfig) {
 			c.Ports = &testutil.TestPortConfig{
 				DNS:     randomPorts[0],
 				HTTP:    randomPorts[1],
@@ -164,7 +163,6 @@ func TestRun_ConsulServerAvailableLater(t *testing.T) {
 			c.CertFile = certFile
 			c.KeyFile = keyFile
 		})
-		require.NoError(t, err)
 		wg.Done()
 	}()
 	defer func() {
@@ -226,7 +224,7 @@ func TestRun_GetsOnlyActiveRoot(t *testing.T) {
 	}
 
 	// start test server
-	a, err := testutil.NewTestServerConfigT(t, func(c *testutil.TestServerConfig) {
+	a := ktestutil.NewTestServer(t, func(c *testutil.TestServerConfig) {
 		c.Connect = map[string]interface{}{
 			"enabled": true,
 		}
@@ -234,8 +232,6 @@ func TestRun_GetsOnlyActiveRoot(t *testing.T) {
 		c.CertFile = certFile
 		c.KeyFile = keyFile
 	})
-	require.NoError(t, err)
-	defer a.Stop()
 
 	client, err := api.NewClient(&api.Config{
 		Address: a.HTTPSAddr,
@@ -318,7 +314,7 @@ func TestRun_WithProvider(t *testing.T) {
 	caFile, certFile, keyFile := test.GenerateServerCerts(t)
 
 	// start the test server
-	a, err := testutil.NewTestServerConfigT(t, func(c *testutil.TestServerConfig) {
+	a := ktestutil.NewTestServer(t, func(c *testutil.TestServerConfig) {
 		c.Connect = map[string]interface{}{
 			"enabled": true,
 		}
@@ -327,7 +323,6 @@ func TestRun_WithProvider(t *testing.T) {
 		c.KeyFile = keyFile
 	})
 	require.NoError(t, err)
-	defer a.Stop()
 
 	// run the command
 	exitCode := cmd.Run([]string{

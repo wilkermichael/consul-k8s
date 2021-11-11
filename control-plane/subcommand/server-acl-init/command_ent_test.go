@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	ktestutil "github.com/hashicorp/consul-k8s/control-plane/testutil"
 	"github.com/hashicorp/consul/api"
 	"github.com/hashicorp/consul/sdk/testutil"
 	"github.com/mitchellh/cli"
@@ -1029,11 +1030,8 @@ partition "default" {
 // Set up test consul agent and kubernetes cluster.
 func completeEnterpriseSetup(t *testing.T) (*fake.Clientset, *testutil.TestServer) {
 	k8s := fake.NewSimpleClientset()
-
-	svr, err := testutil.NewTestServerConfigT(t, func(c *testutil.TestServerConfig) {
+	svr := ktestutil.NewTestServer(t, func(c *testutil.TestServerConfig) {
 		c.ACL.Enabled = true
 	})
-	require.NoError(t, err)
-
 	return k8s, svr
 }

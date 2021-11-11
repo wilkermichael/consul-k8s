@@ -11,6 +11,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/hashicorp/consul-k8s/control-plane/helper/test"
+	ktestutil "github.com/hashicorp/consul-k8s/control-plane/testutil"
 	"github.com/hashicorp/consul/api"
 	"github.com/hashicorp/consul/sdk/testutil"
 	"github.com/stretchr/testify/require"
@@ -124,7 +125,7 @@ func TestProcessUpstreamsTLSandACLs(t *testing.T) {
 	masterToken := "b78d37c7-0ca7-5f4d-99ee-6d9975ce4586"
 	caFile, certFile, keyFile := test.GenerateServerCerts(t)
 	// Create test consul server with ACLs and TLS
-	consul, err := testutil.NewTestServerConfigT(t, func(c *testutil.TestServerConfig) {
+	consul := ktestutil.NewTestServer(t, func(c *testutil.TestServerConfig) {
 		c.ACL.Enabled = true
 		c.ACL.DefaultPolicy = "deny"
 		c.ACL.Tokens.Master = masterToken
@@ -133,10 +134,6 @@ func TestProcessUpstreamsTLSandACLs(t *testing.T) {
 		c.KeyFile = keyFile
 		c.NodeName = nodeName
 	})
-	require.NoError(t, err)
-	defer consul.Stop()
-
-	consul.WaitForServiceIntentions(t)
 	cfg := &api.Config{
 		Address: consul.HTTPSAddr,
 		Scheme:  "https",
@@ -491,13 +488,9 @@ func TestProcessUpstreams(t *testing.T) {
 	for _, tt := range cases {
 		t.Run(tt.name, func(t *testing.T) {
 			// Create test consul server.
-			consul, err := testutil.NewTestServerConfigT(t, func(c *testutil.TestServerConfig) {
+			consul := ktestutil.NewTestServer(t, func(c *testutil.TestServerConfig) {
 				c.NodeName = nodeName
 			})
-			require.NoError(t, err)
-			defer consul.Stop()
-
-			consul.WaitForServiceIntentions(t)
 			httpAddr := consul.HTTPAddr
 			if tt.consulUnavailable {
 				httpAddr = "hostname.does.not.exist:8500"
@@ -996,13 +989,9 @@ func TestReconcileCreateEndpoint(t *testing.T) {
 			fakeClient := fake.NewClientBuilder().WithRuntimeObjects(k8sObjects...).Build()
 
 			// Create test consul server
-			consul, err := testutil.NewTestServerConfigT(t, func(c *testutil.TestServerConfig) {
+			consul := ktestutil.NewTestServer(t, func(c *testutil.TestServerConfig) {
 				c.NodeName = nodeName
 			})
-			require.NoError(t, err)
-			defer consul.Stop()
-			consul.WaitForServiceIntentions(t)
-
 			cfg := &api.Config{
 				Address: consul.HTTPAddr,
 			}
@@ -2337,16 +2326,13 @@ func TestReconcileUpdateEndpoint(t *testing.T) {
 
 			// Create test consul server.
 			adminToken := "123e4567-e89b-12d3-a456-426614174000"
-			consul, err := testutil.NewTestServerConfigT(t, func(c *testutil.TestServerConfig) {
+			consul := ktestutil.NewTestServer(t, func(c *testutil.TestServerConfig) {
 				if tt.enableACLs {
 					c.ACL.Enabled = tt.enableACLs
 					c.ACL.Tokens.Master = adminToken
 				}
 				c.NodeName = nodeName
 			})
-			require.NoError(t, err)
-			defer consul.Stop()
-			consul.WaitForServiceIntentions(t)
 			addr := strings.Split(consul.HTTPAddr, ":")
 			consulPort := addr[1]
 
@@ -2624,17 +2610,13 @@ func TestReconcileDeleteEndpoint(t *testing.T) {
 
 			// Create test consul server.
 			adminToken := "123e4567-e89b-12d3-a456-426614174000"
-			consul, err := testutil.NewTestServerConfigT(t, func(c *testutil.TestServerConfig) {
+			consul := ktestutil.NewTestServer(t, func(c *testutil.TestServerConfig) {
 				if tt.enableACLs {
 					c.ACL.Enabled = true
 					c.ACL.Tokens.Master = adminToken
 				}
 				c.NodeName = nodeName
 			})
-			require.NoError(t, err)
-			defer consul.Stop()
-
-			consul.WaitForServiceIntentions(t)
 			cfg := &api.Config{Address: consul.HTTPAddr}
 			if tt.enableACLs {
 				cfg.Token = adminToken
@@ -3403,16 +3385,7 @@ func TestServiceInstancesForK8SServiceNameAndNamespace(t *testing.T) {
 				},
 			}
 
-			consul, err := testutil.NewTestServerConfigT(t, nil)
-			require.NoError(t, err)
-			defer consul.Stop()
-
-			consul.WaitForServiceIntentions(t)
-			consulClient, err := api.NewClient(&api.Config{
-				Address: consul.HTTPAddr,
-			})
-			require.NoError(t, err)
-
+			consulClient := ktestutil.NewTestServerClient(t, nil)
 			for _, svc := range servicesInConsul {
 				err := consulClient.Agent().ServiceRegister(svc)
 				require.NoError(t, err)

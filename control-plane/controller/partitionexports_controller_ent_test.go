@@ -12,8 +12,8 @@ import (
 	"github.com/hashicorp/consul-k8s/control-plane/api/common"
 	"github.com/hashicorp/consul-k8s/control-plane/api/v1alpha1"
 	"github.com/hashicorp/consul-k8s/control-plane/controller"
+	ktestutil "github.com/hashicorp/consul-k8s/control-plane/testutil"
 	capi "github.com/hashicorp/consul/api"
-	"github.com/hashicorp/consul/sdk/testutil"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -97,15 +97,7 @@ func TestPartitionExportsController_createsPartitionExports(tt *testing.T) {
 			s.AddKnownTypes(v1alpha1.GroupVersion, partitionExport)
 			ctx := context.Background()
 
-			consul, err := testutil.NewTestServerConfigT(t, nil)
-			req.NoError(err)
-			defer consul.Stop()
-			consul.WaitForServiceIntentions(t)
-			consulClient, err := capi.NewClient(&capi.Config{
-				Address: consul.HTTPAddr,
-			})
-			req.NoError(err)
-
+			consulClient := ktestutil.NewTestServerClient(t, nil)
 			fakeClient := fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects(partitionExport).Build()
 
 			controller := &controller.PartitionExportsController{
@@ -218,15 +210,7 @@ func TestPartitionExportsController_updatesPartitionExports(tt *testing.T) {
 			s.AddKnownTypes(v1alpha1.GroupVersion, partitionExport)
 			ctx := context.Background()
 
-			consul, err := testutil.NewTestServerConfigT(t, nil)
-			req.NoError(err)
-			defer consul.Stop()
-			consul.WaitForServiceIntentions(t)
-			consulClient, err := capi.NewClient(&capi.Config{
-				Address: consul.HTTPAddr,
-			})
-			req.NoError(err)
-
+			consulClient := ktestutil.NewTestServerClient(t, nil)
 			fakeClient := fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects(partitionExport).Build()
 
 			controller := &controller.PartitionExportsController{
@@ -263,7 +247,7 @@ func TestPartitionExportsController_updatesPartitionExports(tt *testing.T) {
 			// Now update it.
 			{
 				// First get it so we have the latest revision number.
-				err = fakeClient.Get(ctx, types.NamespacedName{
+				err := fakeClient.Get(ctx, types.NamespacedName{
 					Namespace: c.SourceKubeNS,
 					Name:      partitionExport.KubernetesName(),
 				}, partitionExport)
@@ -271,7 +255,7 @@ func TestPartitionExportsController_updatesPartitionExports(tt *testing.T) {
 
 				// Update the resource.
 				partitionExport.Spec.Services[0].Name = "backend"
-				err := fakeClient.Update(ctx, partitionExport)
+				err = fakeClient.Update(ctx, partitionExport)
 				req.NoError(err)
 
 				resp, err := controller.Reconcile(ctx, ctrl.Request{
@@ -361,15 +345,7 @@ func TestPartitionExportsController_deletesPartitionExports(tt *testing.T) {
 			}
 			s.AddKnownTypes(v1alpha1.GroupVersion, partitionExport)
 
-			consul, err := testutil.NewTestServerConfigT(t, nil)
-			req.NoError(err)
-			defer consul.Stop()
-			consul.WaitForServiceIntentions(t)
-			consulClient, err := capi.NewClient(&capi.Config{
-				Address: consul.HTTPAddr,
-			})
-			req.NoError(err)
-
+			consulClient := ktestutil.NewTestServerClient(t, nil)
 			fakeClient := fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects(partitionExport).Build()
 
 			controller := &controller.PartitionExportsController{
