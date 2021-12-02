@@ -957,18 +957,19 @@ workflows:
           requires:
             - build-distros-amd64
       # Run acceptance tests using the docker image built for the control plane
-      - acceptance:
-          requires:
-            - dev-upload-docker
-            - unit-test-helm-templates
-            - unit-acceptance-framework
-            - unit-cli
-      - acceptance-tproxy:
-          requires:
-            - dev-upload-docker
-            - unit-test-helm-templates
-            - unit-acceptance-framework
-            - unit-cli
+      - acceptance
+#          requires:
+#            - dev-upload-docker
+#            - unit-test-helm-templates
+#            - unit-acceptance-framework
+#            - unit-cli
+      - acceptance-tproxy
+#          requires:
+#            - dev-upload-docker
+#            - unit-test-helm-templates
+#            - unit-acceptance-framework
+#            - unit-cli
+      - acceptance-eks-1-18
   nightly-acceptance-tests:
     triggers:
       - schedule:
