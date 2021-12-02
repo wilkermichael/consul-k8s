@@ -3,6 +3,7 @@ package uninstall
 import (
 	"fmt"
 	"os"
+	"strings"
 	"sync"
 	"time"
 
@@ -379,11 +380,10 @@ func (c *Command) deletePVCs(foundReleaseName, foundReleaseNamespace string) err
 	return nil
 }
 
-// deleteSecrets deletes any secrets that have the label "managed-by" set to "consul-k8s".
+// deleteSecrets deletes any secrets that have foundReleaseName in their name.
 func (c *Command) deleteSecrets(foundReleaseName, foundReleaseNamespace string) error {
-	secrets, err := c.kubernetes.CoreV1().Secrets(foundReleaseNamespace).List(c.Ctx, metav1.ListOptions{
-		LabelSelector: common.CLILabelKey + "=" + common.CLILabelValue,
-	})
+	var secretNames []string
+	secrets, err := c.kubernetes.CoreV1().Secrets(foundReleaseNamespace).List(c.Ctx, metav1.ListOptions{})
 	if err != nil {
 		return fmt.Errorf("deleteSecrets: %s", err)
 	}
@@ -391,13 +391,14 @@ func (c *Command) deleteSecrets(foundReleaseName, foundReleaseNamespace string) 
 		c.UI.Output("No Consul secrets found.", terminal.WithSuccessStyle())
 		return nil
 	}
-	var secretNames []string
 	for _, secret := range secrets.Items {
-		err := c.kubernetes.CoreV1().Secrets(foundReleaseNamespace).Delete(c.Ctx, secret.Name, metav1.DeleteOptions{})
-		if err != nil {
-			return fmt.Errorf("deleteSecrets: error deleting Secret %q: %s", secret.Name, err)
+		if strings.HasPrefix(secret.Name, foundReleaseName) {
+			err := c.kubernetes.CoreV1().Secrets(foundReleaseNamespace).Delete(c.Ctx, secret.Name, metav1.DeleteOptions{})
+			if err != nil {
+				return fmt.Errorf("deleteSecrets: error deleting Secret %q: %s", secret.Name, err)
+			}
+			secretNames = append(secretNames, secret.Name)
 		}
-		secretNames = append(secretNames, secret.Name)
 	}
 	if len(secretNames) > 0 {
 		for _, secret := range secretNames {
