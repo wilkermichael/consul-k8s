@@ -102,6 +102,7 @@ commands:
                           << parameters.additional-flags >> \
                           ${ENABLE_ENTERPRISE:+-enable-enterprise} \
                           -enable-multi-cluster \
+                          -run TestCLIConnectInject \
                           -debug-directory="$TEST_RESULTS/debug" \
                           -consul-k8s-image=<< parameters.consul-k8s-image >>
                     then
@@ -132,6 +133,7 @@ commands:
                   gotestsum --junitfile "$TEST_RESULTS/gotestsum-report.xml" -- $pkgs -p 1 -timeout 2h -failfast \
                       << parameters.additional-flags >> \
                       -enable-multi-cluster \
+                      -run TestCLIConnectInject \
                       ${ENABLE_ENTERPRISE:+-enable-enterprise} \
                       -debug-directory="$TEST_RESULTS/debug" \
                       -consul-k8s-image=<< parameters.consul-k8s-image >>
