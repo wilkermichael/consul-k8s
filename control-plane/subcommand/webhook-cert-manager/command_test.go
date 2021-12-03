@@ -277,8 +277,7 @@ func TestRun_SecretExists(t *testing.T) {
 
 	secretOne := &v1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:   secretOneName,
-			Labels: map[string]string{common.CLILabelKey: common.CLILabelValue},
+			Name: secretOneName,
 		},
 		StringData: map[string]string{
 			v1.TLSCertKey:       "cert-1",
@@ -288,8 +287,7 @@ func TestRun_SecretExists(t *testing.T) {
 	}
 	secretTwo := &v1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:   secretTwoName,
-			Labels: map[string]string{common.CLILabelKey: common.CLILabelValue},
+			Name: secretTwoName,
 		},
 		StringData: map[string]string{
 			v1.TLSCertKey:       "cert-2",
@@ -404,8 +402,7 @@ func TestRun_SecretUpdates(t *testing.T) {
 
 	secret1 := &v1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:   secretOne,
-			Labels: map[string]string{common.CLILabelKey: common.CLILabelValue},
+			Name: secretOne,
 		},
 		StringData: map[string]string{
 			v1.TLSCertKey:       "cert-1",
