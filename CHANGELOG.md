@@ -1,5 +1,5 @@
 ## UNRELEASED
-test
+test2
 IMPROVEMENTS:
 * Helm
   * Allow customization of `terminationGracePeriodSeconds` on the ingress gateways. [[GH-947](https://github.com/hashicorp/consul-k8s/pull/947)] 
