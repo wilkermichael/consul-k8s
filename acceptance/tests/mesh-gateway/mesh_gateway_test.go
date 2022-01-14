@@ -34,6 +34,7 @@ func TestMeshGatewayDefault(t *testing.T) {
 		"global.tls.httpsOnly":                     "false",
 		"global.federation.enabled":                "true",
 		"global.federation.createFederationSecret": "true",
+		//"global.imageEnvoy":                        "envoyproxy/envoy-alpine:v1.16.0",
 
 		"connectInject.enabled": "true",
 		"controller.enabled":    "true",
@@ -80,6 +81,7 @@ func TestMeshGatewayDefault(t *testing.T) {
 		"server.extraVolumes[0].load":          "true",
 		"server.extraVolumes[0].items[0].key":  "serverConfigJSON",
 		"server.extraVolumes[0].items[0].path": "config.json",
+		//"global.imageEnvoy":                    "envoyproxy/envoy-alpine:v1.16.0",
 
 		"connectInject.enabled": "true",
 
@@ -158,6 +160,7 @@ func TestMeshGatewaySecure(t *testing.T) {
 
 				"global.federation.enabled":                "true",
 				"global.federation.createFederationSecret": "true",
+				//"global.imageEnvoy":                        "envoyproxy/envoy-alpine:v1.16.0",
 
 				"connectInject.enabled": "true",
 				"controller.enabled":    "true",
@@ -204,6 +207,7 @@ func TestMeshGatewaySecure(t *testing.T) {
 
 				"global.federation.enabled": "true",
 
+				//"global.imageEnvoy":                    "envoyproxy/envoy-alpine:v1.16.0",
 				"server.extraVolumes[0].type":          "secret",
 				"server.extraVolumes[0].name":          federationSecretName,
 				"server.extraVolumes[0].load":          "true",
