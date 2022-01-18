@@ -380,7 +380,7 @@ func (c *Command) Run(args []string) int {
 
 	if c.flagEnablePartitions && c.flagPartitionName == consulDefaultPartition && isPrimary {
 		// Partition token is local because only the Primary datacenter can have Admin Partitions.
-		err := c.createLocalACL("partitions", partitionRules, consulDC, isPrimary, consulClient)
+		err := c.createLocalACL("partitions", partitionRules, consulDC, isPrimary, true, consulClient)
 		if err != nil {
 			c.log.Error(err.Error())
 			return 1
@@ -443,7 +443,7 @@ func (c *Command) Run(args []string) int {
 			return 1
 		}
 
-		err = c.createLocalACL("client", agentRules, consulDC, isPrimary, consulClient)
+		err = c.createLocalACL("client", agentRules, consulDC, isPrimary, true, consulClient)
 		if err != nil {
 			c.log.Error(err.Error())
 			return 1
@@ -468,9 +468,9 @@ func (c *Command) Run(args []string) int {
 		// If namespaces are enabled, the policy and token needs to be global
 		// to be allowed to create namespaces.
 		if c.flagEnableNamespaces {
-			err = c.createGlobalACL("catalog-sync", syncRules, consulDC, isPrimary, consulClient)
+			err = c.createGlobalACL("catalog-sync", syncRules, consulDC, isPrimary, true, consulClient)
 		} else {
-			err = c.createLocalACL("catalog-sync", syncRules, consulDC, isPrimary, consulClient)
+			err = c.createLocalACL("catalog-sync", syncRules, consulDC, isPrimary, true, consulClient)
 		}
 		if err != nil {
 			c.log.Error(err.Error())
@@ -495,9 +495,9 @@ func (c *Command) Run(args []string) int {
 		// If namespaces are enabled, the policy and token need to be global
 		// to be allowed to create namespaces.
 		if c.flagEnableNamespaces {
-			err = c.createGlobalACL("connect-inject", injectRules, consulDC, isPrimary, consulClient)
+			err = c.createGlobalACL("connect-inject", injectRules, consulDC, isPrimary, true, consulClient)
 		} else {
-			err = c.createLocalACL("connect-inject", injectRules, consulDC, isPrimary, consulClient)
+			err = c.createLocalACL("connect-inject", injectRules, consulDC, isPrimary, true, consulClient)
 		}
 
 		if err != nil {
@@ -509,9 +509,9 @@ func (c *Command) Run(args []string) int {
 	if c.flagCreateEntLicenseToken {
 		var err error
 		if c.flagEnablePartitions {
-			err = c.createLocalACL("enterprise-license", entPartitionLicenseRules, consulDC, isPrimary, consulClient)
+			err = c.createLocalACL("enterprise-license", entPartitionLicenseRules, consulDC, isPrimary, true, consulClient)
 		} else {
-			err = c.createLocalACL("enterprise-license", entLicenseRules, consulDC, isPrimary, consulClient)
+			err = c.createLocalACL("enterprise-license", entLicenseRules, consulDC, isPrimary, true, consulClient)
 		}
 		if err != nil {
 			c.log.Error(err.Error())
@@ -520,7 +520,7 @@ func (c *Command) Run(args []string) int {
 	}
 
 	if c.flagCreateSnapshotAgentToken {
-		err := c.createLocalACL("client-snapshot-agent", snapshotAgentRules, consulDC, isPrimary, consulClient)
+		err := c.createLocalACL("client-snapshot-agent", snapshotAgentRules, consulDC, isPrimary, true, consulClient)
 		if err != nil {
 			c.log.Error(err.Error())
 			return 1
@@ -536,7 +536,7 @@ func (c *Command) Run(args []string) int {
 
 		// Mesh gateways require a global policy/token because they must
 		// discover services in other datacenters.
-		err = c.createGlobalACL("mesh-gateway", meshGatewayRules, consulDC, isPrimary, consulClient)
+		err = c.createGlobalACL("mesh-gateway", meshGatewayRules, consulDC, isPrimary, true, consulClient)
 		if err != nil {
 			c.log.Error(err.Error())
 			return 1
@@ -591,7 +591,7 @@ func (c *Command) Run(args []string) int {
 			// the words "ingress-gateway". We need to create unique names for tokens
 			// across all gateway types and so must suffix with `-ingress-gateway`.
 			tokenName := fmt.Sprintf("%s-ingress-gateway", name)
-			err = c.createLocalACL(tokenName, ingressGatewayRules, consulDC, isPrimary, consulClient)
+			err = c.createLocalACL(tokenName, ingressGatewayRules, consulDC, isPrimary, true, consulClient)
 			if err != nil {
 				c.log.Error(err.Error())
 				return 1
@@ -647,7 +647,7 @@ func (c *Command) Run(args []string) int {
 			// the words "ingress-gateway". We need to create unique names for tokens
 			// across all gateway types and so must suffix with `-terminating-gateway`.
 			tokenName := fmt.Sprintf("%s-terminating-gateway", name)
-			err = c.createLocalACL(tokenName, terminatingGatewayRules, consulDC, isPrimary, consulClient)
+			err = c.createLocalACL(tokenName, terminatingGatewayRules, consulDC, isPrimary, true, consulClient)
 			if err != nil {
 				c.log.Error(err.Error())
 				return 1
@@ -663,7 +663,7 @@ func (c *Command) Run(args []string) int {
 		}
 		// Policy must be global because it replicates from the primary DC
 		// and so the primary DC needs to be able to accept the token.
-		err = c.createGlobalACL(common.ACLReplicationTokenName, rules, consulDC, isPrimary, consulClient)
+		err = c.createGlobalACL(common.ACLReplicationTokenName, rules, consulDC, isPrimary, true, consulClient)
 		if err != nil {
 			c.log.Error(err.Error())
 			return 1
@@ -676,16 +676,29 @@ func (c *Command) Run(args []string) int {
 			c.log.Error("Error templating controller token rules", "err", err)
 			return 1
 		}
+
+		// Create the binding rule so we can issue a consul login at runtime.
+		authMethodName := c.withPrefix("k8s-auth-method")
+		_, _, err = consulClient.ACL().BindingRuleCreate(&api.ACLBindingRule{
+			AuthMethod: authMethodName,
+			BindType:   api.BindingRuleBindTypeService,
+			BindName:   "${serviceaccount.name}",
+			Selector:   "serviceaccount.namespace==default",
+		}, &api.WriteOptions{})
+		if err != nil {
+			c.log.Error(err.Error())
+			return 1
+		}
+
 		// Controller token must be global because config entry writes all
 		// go to the primary datacenter. This means secondary datacenters need
 		// a token that is known by the primary datacenters.
-		err = c.createGlobalACL("controller", rules, consulDC, isPrimary, consulClient)
+		err = c.createGlobalACL("controller", rules, consulDC, isPrimary, false, consulClient)
 		if err != nil {
 			c.log.Error(err.Error())
 			return 1
 		}
 	}
-
 	c.log.Info("server-acl-init completed successfully")
 	return 0
 }

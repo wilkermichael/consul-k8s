@@ -46,12 +46,45 @@ spec:
       initContainers:
       {{- if .Values.global.acls.manageSystemACLs }}
       - name: controller-acl-init
+        env:
+          - name: HOST_IP
+            valueFrom:
+              fieldRef:
+                fieldPath: status.hostIP
+          {{- if .Values.global.tls.enabled }}
+          - name: CONSUL_CACERT
+            value: /consul/tls/ca/tls.crt
+          {{- end }}
+          - name: CONSUL_HTTP_ADDR
+            {{- if .Values.global.tls.enabled }}
+            value: https://$(HOST_IP):8501
+            {{- else }}
+            value: http://$(HOST_IP):8500
+            {{- end }}
         image: {{ .Values.global.imageK8S }}
+        volumeMounts:
+        - mountPath: /consul/connect-inject
+          name: consul-data
+          readOnly: false
+        {{- if .Values.global.tls.enabled }}
+        {{- if .Values.global.tls.enableAutoEncrypt }}
+        - name: consul-auto-encrypt-ca-cert
+        {{- else }}
+        - name: consul-ca-cert
+        {{- end }}
+          mountPath: /consul/tls/ca
+          readOnly: true
+        {{- end }}
         command:
           - "/bin/sh"
           - "-ec"
           - |
+            mkdir -p /consul/connect-inject
+
             consul-k8s-control-plane acl-init \
+               {{- if .Values.global.acls.manageSystemACLs }}
+               -acl-auth-method="{{ template "consul.fullname" . }}-k8s-auth-method" \
+               {{- end }}
               -secret-name="{{ template "consul.fullname" . }}-controller-acl-token" \
               -k8s-namespace={{ .Release.Namespace }}
         resources:
@@ -95,6 +128,17 @@ spec:
             -consul-cross-namespace-acl-policy=cross-namespace-policy \
             {{- end }}
             {{- end }}
+        {{- if .Values.global.acls.manageSystemACLs }}
+        lifecycle:
+          preStop:
+            exec:
+              command:
+                - "/bin/sh"
+                - "-ec"
+                - |
+                  consul-k8s-control-plane consul-logout \
+                     -acl-auth-method="{{ template "consul.fullname" . }}-k8s-auth-method"
+        {{- end }}
         env:
         - name: HOST_IP
           valueFrom:
@@ -107,13 +151,6 @@ spec:
               name: {{ .Values.controller.aclToken.secretName }}
               key: {{ .Values.controller.aclToken.secretKey }}
         {{- end }}
-        {{- if .Values.global.acls.manageSystemACLs }}
-        - name: CONSUL_HTTP_TOKEN
-          valueFrom:
-            secretKeyRef:
-              name: "{{ template "consul.fullname" . }}-controller-acl-token"
-              key: "token"
-        {{- end}}
         {{- if .Values.global.tls.enabled }}
         - name: CONSUL_CACERT
           value: /consul/tls/ca/tls.crt
@@ -135,6 +172,9 @@ spec:
           {{- toYaml . | nindent 12 }}
         {{- end }}
         volumeMounts:
+        - mountPath: /consul/connect-inject
+          name: consul-data
+          readOnly: false
         - mountPath: /tmp/controller-webhook/certs
           name: cert
           readOnly: true
@@ -172,6 +212,9 @@ spec:
           medium: "Memory"
       {{- end }}
       {{- end }}
+      - name: consul-data
+        emptyDir:
+          medium: "Memory"
       serviceAccountName: {{ template "consul.fullname" . }}-controller
       {{- if .Values.controller.nodeSelector }}
       nodeSelector:
