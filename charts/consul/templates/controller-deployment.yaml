@@ -47,6 +47,10 @@ spec:
       {{- if .Values.global.acls.manageSystemACLs }}
       - name: controller-acl-init
         env:
+          - name: POD_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.name
           - name: HOST_IP
             valueFrom:
               fieldRef:

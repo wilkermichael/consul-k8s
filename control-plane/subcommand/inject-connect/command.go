@@ -444,6 +444,34 @@ func (c *Command) Run(args []string) int {
 		return 1
 	}
 
+	if err = (&connectinject.AclCleanupController{
+		Client:                     mgr.GetClient(),
+		ConsulClient:               c.consulClient,
+		ConsulScheme:               consulURL.Scheme,
+		ConsulPort:                 consulURL.Port(),
+		AllowK8sNamespacesSet:      allowK8sNamespaces,
+		DenyK8sNamespacesSet:       denyK8sNamespaces,
+		MetricsConfig:              metricsConfig,
+		ConsulClientCfg:            cfg,
+		EnableConsulPartitions:     c.flagEnablePartitions,
+		EnableConsulNamespaces:     c.flagEnableNamespaces,
+		ConsulDestinationNamespace: c.flagConsulDestinationNamespace,
+		EnableNSMirroring:          c.flagEnableK8SNSMirroring,
+		NSMirroringPrefix:          c.flagK8SNSMirroringPrefix,
+		CrossNSACLPolicy:           c.flagCrossNamespaceACLPolicy,
+		EnableTransparentProxy:     c.flagDefaultEnableTransparentProxy,
+		TProxyOverwriteProbes:      c.flagTransparentProxyDefaultOverwriteProbes,
+		AuthMethod:                 c.flagACLAuthMethod,
+		Log:                        ctrl.Log.WithName("controller").WithName("acl-cleanup"),
+		Scheme:                     mgr.GetScheme(),
+		ReleaseName:                c.flagReleaseName,
+		ReleaseNamespace:           c.flagReleaseNamespace,
+		Context:                    ctx,
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create cleanup controller", "controller", connectinject.AclCleanupController{})
+		return 1
+	}
+
 	if err = mgr.AddReadyzCheck("ready", connectinject.ReadinessCheck{CertDir: c.flagCertDir}.Ready); err != nil {
 		setupLog.Error(err, "unable to create readiness check", "controller", connectinject.EndpointsController{})
 		return 1

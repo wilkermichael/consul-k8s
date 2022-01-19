@@ -238,7 +238,7 @@ func TestRun_TokensPrimaryDC(t *testing.T) {
 			TokenFlags:  []string{"-create-controller-token"},
 			PolicyNames: []string{"controller-token"},
 			PolicyDCs:   nil,
-			SecretNames: []string{resourcePrefix + "-controller-acl-token"},
+			SecretNames: nil,
 			LocalToken:  false,
 		},
 		{
@@ -409,7 +409,7 @@ func TestRun_TokensReplicatedDC(t *testing.T) {
 			TokenFlags:  []string{"-create-controller-token"},
 			PolicyNames: []string{"controller-token-dc2"},
 			PolicyDCs:   nil,
-			SecretNames: []string{resourcePrefix + "-controller-acl-token"},
+			SecretNames: nil,
 			LocalToken:  false,
 		},
 	}
@@ -546,7 +546,7 @@ func TestRun_TokensWithProvidedBootstrapToken(t *testing.T) {
 			TestName:    "Controller token",
 			TokenFlags:  []string{"-create-controller-token"},
 			PolicyNames: []string{"controller-token"},
-			SecretNames: []string{resourcePrefix + "-controller-acl-token"},
+			SecretNames: nil,
 		},
 	}
 	for _, c := range cases {

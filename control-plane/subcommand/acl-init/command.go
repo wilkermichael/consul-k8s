@@ -6,6 +6,7 @@ import (
 	"flag"
 	"fmt"
 	"io/ioutil"
+	"os"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -151,8 +152,12 @@ func (c *Command) Run(args []string) int {
 			c.logger.Error("Unable to get client connection", "error", err)
 			return 1
 		}
+		meta := map[string]string{}
+		meta["component"] = "controller"
+		meta["pod"] = os.Getenv("POD_NAME")
+		c.logger.Error("============== acl meta", "meta", meta)
 		err = backoff.Retry(func() error {
-			err := common.ConsulLogin(consulClient, c.bearerTokenFile, c.flagACLAuthMethod, c.tokenSinkFile, c.flagAuthMethodNamespace, map[string]string{})
+			err := common.ConsulLogin(consulClient, c.bearerTokenFile, c.flagACLAuthMethod, c.tokenSinkFile, c.flagAuthMethodNamespace, meta)
 			if err != nil {
 				c.logger.Error("Consul login failed; retrying", "error", err)
 			}
