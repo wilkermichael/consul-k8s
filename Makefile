@@ -26,10 +26,10 @@ control-plane-dev-docker: ## Build consul-k8s-control-plane dev Docker image.
        -f $(CURDIR)/control-plane/build-support/docker/Dev.dockerfile $(CURDIR)/control-plane
 
 control-plane-test: ## Run go test for the control plane.
-	cd control-plane; go test ./...
+	cd control-plane; go test -p 2 ./...
 
 control-plane-ent-test: ## Run go test with Consul enterprise tests. The consul binary in your PATH must be Consul Enterprise.
-	cd control-plane; go test ./... -tags=enterprise
+	cd control-plane; go test -p 2 ./... -tags=enterprise
 
 control-plane-cov: ## Run go test with code coverage.
 	cd control-plane; go test ./... -coverprofile=coverage.out; go tool cover -html=coverage.out

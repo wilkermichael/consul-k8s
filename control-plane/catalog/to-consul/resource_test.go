@@ -3,6 +3,7 @@ package catalog
 import (
 	"context"
 	"testing"
+	"time"
 
 	mapset "github.com/deckarep/golang-set"
 	"github.com/hashicorp/consul-k8s/control-plane/helper/controller"
@@ -23,30 +24,28 @@ func init() {
 	hclog.DefaultOptions.Level = hclog.Debug
 }
 
-// Test that deleting a service properly deletes the registration.
+// Test that deleting a service properly Delete.s the registration.
 func TestServiceResource_createDelete(t *testing.T) {
 	t.Parallel()
 	client := fake.NewSimpleClientset()
 	syncer := newTestSyncer()
 	serviceResource := defaultServiceResource(client, syncer)
 
-	// Start the controller
+	// Start the controller.
 	closer := controller.TestControllerRun(&serviceResource)
 	defer closer()
 
-	// Insert an LB service
+	// Insert an LB service.
 	svc := lbService("foo", metav1.NamespaceDefault, "1.2.3.4")
 	_, err := client.CoreV1().Services(metav1.NamespaceDefault).Create(context.Background(), svc, metav1.CreateOptions{})
 	require.NoError(t, err)
 
-	// Delete
+	// Delete.
 	require.NoError(t, client.CoreV1().Services(metav1.NamespaceDefault).Delete(context.Background(), "foo", metav1.DeleteOptions{}))
 
-	// Verify what we got
-	retry.Run(t, func(r *retry.R) {
-		syncer.Lock()
-		defer syncer.Unlock()
-		actual := syncer.Registrations
+	// Verify what we got.
+	retry.RunWith(&retry.Timer{Timeout: 7 * time.Second, Wait: 1 * time.Second}, t, func(r *retry.R) {
+		actual := syncer.Registrations()
 		require.Len(r, actual, 0)
 	})
 }
@@ -58,20 +57,18 @@ func TestServiceResource_defaultEnable(t *testing.T) {
 	syncer := newTestSyncer()
 	serviceResource := defaultServiceResource(client, syncer)
 
-	// Start the controller
+	// Start the controller.
 	closer := controller.TestControllerRun(&serviceResource)
 	defer closer()
 
-	// Insert an LB service
+	// Insert an LB service.
 	svc := lbService("foo", metav1.NamespaceDefault, "1.2.3.4")
 	_, err := client.CoreV1().Services(metav1.NamespaceDefault).Create(context.Background(), svc, metav1.CreateOptions{})
 	require.NoError(t, err)
 
-	// Verify what we got
-	retry.Run(t, func(r *retry.R) {
-		syncer.Lock()
-		defer syncer.Unlock()
-		actual := syncer.Registrations
+	// Verify what we got.
+	retry.RunWith(&retry.Timer{Timeout: 7 * time.Second, Wait: 1 * time.Second}, t, func(r *retry.R) {
+		actual := syncer.Registrations()
 		require.Len(r, actual, 1)
 	})
 }
@@ -83,26 +80,24 @@ func TestServiceResource_defaultEnableDisable(t *testing.T) {
 	syncer := newTestSyncer()
 	serviceResource := defaultServiceResource(client, syncer)
 
-	// Start the controller
+	// Start the controller.
 	closer := controller.TestControllerRun(&serviceResource)
 	defer closer()
 
-	// Insert an LB service
+	// Insert an LB service.
 	svc := lbService("foo", metav1.NamespaceDefault, "1.2.3.4")
 	svc.Annotations[annotationServiceSync] = "false"
 	_, err := client.CoreV1().Services(metav1.NamespaceDefault).Create(context.Background(), svc, metav1.CreateOptions{})
 	require.NoError(t, err)
 
-	// Verify what we got
-	retry.Run(t, func(r *retry.R) {
-		syncer.Lock()
-		defer syncer.Unlock()
-		actual := syncer.Registrations
+	// Verify what we got.
+	retry.RunWith(&retry.Timer{Timeout: 7 * time.Second, Wait: 1 * time.Second}, t, func(r *retry.R) {
+		actual := syncer.Registrations()
 		require.Len(r, actual, 0)
 	})
 }
 
-// Test that we can default disable
+// Test that we can default disable.
 func TestServiceResource_defaultDisable(t *testing.T) {
 	t.Parallel()
 	client := fake.NewSimpleClientset()
@@ -110,25 +105,23 @@ func TestServiceResource_defaultDisable(t *testing.T) {
 	serviceResource := defaultServiceResource(client, syncer)
 	serviceResource.ExplicitEnable = true
 
-	// Start the controller
+	// Start the controller.
 	closer := controller.TestControllerRun(&serviceResource)
 	defer closer()
 
-	// Insert an LB service
+	// Insert an LB service.
 	svc := lbService("foo", metav1.NamespaceDefault, "1.2.3.4")
 	_, err := client.CoreV1().Services(metav1.NamespaceDefault).Create(context.Background(), svc, metav1.CreateOptions{})
 	require.NoError(t, err)
 
-	// Verify what we got
-	retry.Run(t, func(r *retry.R) {
-		syncer.Lock()
-		defer syncer.Unlock()
-		actual := syncer.Registrations
+	// Verify what we got.
+	retry.RunWith(&retry.Timer{Timeout: 7 * time.Second, Wait: 1 * time.Second}, t, func(r *retry.R) {
+		actual := syncer.Registrations()
 		require.Len(r, actual, 0)
 	})
 }
 
-// Test that we can default disable but override
+// Test that we can default disable but override.
 func TestServiceResource_defaultDisableEnable(t *testing.T) {
 	t.Parallel()
 	client := fake.NewSimpleClientset()
@@ -136,26 +129,24 @@ func TestServiceResource_defaultDisableEnable(t *testing.T) {
 	serviceResource := defaultServiceResource(client, syncer)
 	serviceResource.ExplicitEnable = true
 
-	// Start the controller
+	// Start the controller.
 	closer := controller.TestControllerRun(&serviceResource)
 	defer closer()
 
-	// Insert an LB service
+	// Insert an LB service.
 	svc := lbService("foo", metav1.NamespaceDefault, "1.2.3.4")
 	svc.Annotations[annotationServiceSync] = "t"
 	_, err := client.CoreV1().Services(metav1.NamespaceDefault).Create(context.Background(), svc, metav1.CreateOptions{})
 	require.NoError(t, err)
 
-	// Verify what we got
-	retry.Run(t, func(r *retry.R) {
-		syncer.Lock()
-		defer syncer.Unlock()
-		actual := syncer.Registrations
+	// Verify what we got.
+	retry.RunWith(&retry.Timer{Timeout: 7 * time.Second, Wait: 1 * time.Second}, t, func(r *retry.R) {
+		actual := syncer.Registrations()
 		require.Len(r, actual, 1)
 	})
 }
 
-// Test changing the sync tag to false deletes the service.
+// Test changing the sync tag to false Delete.s the service.
 func TestServiceResource_changeSyncToFalse(t *testing.T) {
 	t.Parallel()
 	client := fake.NewSimpleClientset()
@@ -163,21 +154,19 @@ func TestServiceResource_changeSyncToFalse(t *testing.T) {
 	serviceResource := defaultServiceResource(client, syncer)
 	serviceResource.ExplicitEnable = true
 
-	// Start the controller
+	// Start the controller.
 	closer := controller.TestControllerRun(&serviceResource)
 	defer closer()
 
-	// Insert an LB service with the sync=true
+	// Insert an LB service. with the sync=true.
 	svc := lbService("foo", metav1.NamespaceDefault, "1.2.3.4")
 	svc.Annotations[annotationServiceSync] = "true"
 	_, err := client.CoreV1().Services(metav1.NamespaceDefault).Create(context.Background(), svc, metav1.CreateOptions{})
 	require.NoError(t, err)
 
 	// Verify the service gets registered.
-	retry.Run(t, func(r *retry.R) {
-		syncer.Lock()
-		defer syncer.Unlock()
-		actual := syncer.Registrations
+	retry.RunWith(&retry.Timer{Timeout: 7 * time.Second, Wait: 1 * time.Second}, t, func(r *retry.R) {
+		actual := syncer.Registrations()
 		require.Len(r, actual, 1)
 	})
 
@@ -187,16 +176,14 @@ func TestServiceResource_changeSyncToFalse(t *testing.T) {
 	require.NoError(t, err)
 
 	// Verify the service gets deregistered.
-	retry.Run(t, func(r *retry.R) {
-		syncer.Lock()
-		defer syncer.Unlock()
-		actual := syncer.Registrations
+	retry.RunWith(&retry.Timer{Timeout: 7 * time.Second, Wait: 1 * time.Second}, t, func(r *retry.R) {
+		actual := syncer.Registrations()
 		require.Len(r, actual, 0)
 	})
 }
 
 // Test that the k8s namespace is appended with a '-'
-// when AddK8SNamespaceSuffix is true
+// when AddK8SNamespaceSuffix is true.
 func TestServiceResource_addK8SNamespace(t *testing.T) {
 	t.Parallel()
 	client := fake.NewSimpleClientset()
@@ -204,27 +191,25 @@ func TestServiceResource_addK8SNamespace(t *testing.T) {
 	serviceResource := defaultServiceResource(client, syncer)
 	serviceResource.AddK8SNamespaceSuffix = true
 
-	// Start the controller
+	// Start the controller.
 	closer := controller.TestControllerRun(&serviceResource)
 	defer closer()
 
-	// Insert an LB service with the sync=true
+	// Insert an LB service. with the sync=true.
 	svc := lbService("foo", "namespace", "1.2.3.4")
 	_, err := client.CoreV1().Services("namespace").Create(context.Background(), svc, metav1.CreateOptions{})
 	require.NoError(t, err)
 
-	// Verify that the service name has k8s namespace appended with an '-'
-	retry.Run(t, func(r *retry.R) {
-		syncer.Lock()
-		defer syncer.Unlock()
-		actual := syncer.Registrations
+	// Verify that the service name has k8s namespace appended with an '-'.
+	retry.RunWith(&retry.Timer{Timeout: 7 * time.Second, Wait: 1 * time.Second}, t, func(r *retry.R) {
+		actual := syncer.Registrations()
 		require.Len(r, actual, 1)
 		require.Equal(r, actual[0].Service.Service, "foo-namespace")
 	})
 }
 
 // Test k8s namespace suffix is appended
-// when the consul prefix is provided
+// when the consul prefix is provided.
 func TestServiceResource_addK8SNamespaceWithPrefix(t *testing.T) {
 	t.Parallel()
 	client := fake.NewSimpleClientset()
@@ -233,20 +218,18 @@ func TestServiceResource_addK8SNamespaceWithPrefix(t *testing.T) {
 	serviceResource.AddK8SNamespaceSuffix = true
 	serviceResource.ConsulServicePrefix = "prefix"
 
-	// Start the controller
+	// Start the controller.
 	closer := controller.TestControllerRun(&serviceResource)
 	defer closer()
 
-	// Insert an LB service with the sync=true
+	// Insert an LB service. with the sync=true.
 	svc := lbService("foo", "namespace", "1.2.3.4")
 	_, err := client.CoreV1().Services("namespace").Create(context.Background(), svc, metav1.CreateOptions{})
 	require.NoError(t, err)
 
-	// Verify that the service name has k8s namespace appended with an '-'
-	retry.Run(t, func(r *retry.R) {
-		syncer.Lock()
-		defer syncer.Unlock()
-		actual := syncer.Registrations
+	// Verify that the service name has k8s namespace appended with an '-'.
+	retry.RunWith(&retry.Timer{Timeout: 7 * time.Second, Wait: 1 * time.Second}, t, func(r *retry.R) {
+		actual := syncer.Registrations()
 		require.Len(r, actual, 1)
 		require.Equal(r, actual[0].Service.Service, "prefixfoo-namespace")
 	})
@@ -261,27 +244,25 @@ func TestServiceResource_ConsulNodeName(t *testing.T) {
 	serviceResource := defaultServiceResource(client, syncer)
 	serviceResource.ConsulNodeName = "test-node"
 
-	// Start the controller
+	// Start the controller.
 	closer := controller.TestControllerRun(&serviceResource)
 	defer closer()
 
-	// Insert an LB service with the sync=true
+	// Insert an LB service. with the sync=true.
 	svc := lbService("foo", "namespace", "1.2.3.4")
 	_, err := client.CoreV1().Services("namespace").Create(context.Background(), svc, metav1.CreateOptions{})
 	require.NoError(t, err)
 
-	// Verify that the service name has k8s namespace appended with an '-'
-	retry.Run(t, func(r *retry.R) {
-		syncer.Lock()
-		defer syncer.Unlock()
-		actual := syncer.Registrations
+	// Verify that the service name has k8s namespace appended with an '-'.
+	retry.RunWith(&retry.Timer{Timeout: 7 * time.Second, Wait: 1 * time.Second}, t, func(r *retry.R) {
+		actual := syncer.Registrations()
 		require.Len(r, actual, 1)
 		require.Equal(r, actual[0].Node, "test-node")
 	})
 }
 
 // Test k8s namespace suffix is not appended
-// when the service name annotation is provided
+// when the service name annotation is provided.
 func TestServiceResource_addK8SNamespaceWithNameAnnotation(t *testing.T) {
 	t.Parallel()
 	client := fake.NewSimpleClientset()
@@ -289,21 +270,19 @@ func TestServiceResource_addK8SNamespaceWithNameAnnotation(t *testing.T) {
 	serviceResource := defaultServiceResource(client, syncer)
 	serviceResource.AddK8SNamespaceSuffix = true
 
-	// Start the controller
+	// Start the controller.
 	closer := controller.TestControllerRun(&serviceResource)
 	defer closer()
 
-	// Insert an LB service with the sync=true
+	// Insert an LB service. with the sync=true.
 	svc := lbService("foo", "bar", "1.2.3.4")
 	svc.Annotations[annotationServiceName] = "different-service-name"
 	_, err := client.CoreV1().Services("bar").Create(context.Background(), svc, metav1.CreateOptions{})
 	require.NoError(t, err)
 
-	// Verify that the service name annotation is preferred
-	retry.Run(t, func(r *retry.R) {
-		syncer.Lock()
-		defer syncer.Unlock()
-		actual := syncer.Registrations
+	// Verify that the service name annotation is preferred.
+	retry.RunWith(&retry.Timer{Timeout: 7 * time.Second, Wait: 1 * time.Second}, t, func(r *retry.R) {
+		actual := syncer.Registrations()
 		require.Len(r, actual, 1)
 		require.Equal(r, actual[0].Service.Service, "different-service-name")
 	})
@@ -316,21 +295,19 @@ func TestServiceResource_externalIP(t *testing.T) {
 	syncer := newTestSyncer()
 	serviceResource := defaultServiceResource(client, syncer)
 
-	// Start the controller
+	// Start the controller.
 	closer := controller.TestControllerRun(&serviceResource)
 	defer closer()
 
-	// Insert an LB service
+	// Insert an LB service.
 	svc := lbService("foo", metav1.NamespaceDefault, "1.2.3.4")
 	svc.Spec.ExternalIPs = []string{"3.3.3.3", "4.4.4.4"}
 	_, err := client.CoreV1().Services(metav1.NamespaceDefault).Create(context.Background(), svc, metav1.CreateOptions{})
 	require.NoError(t, err)
 
-	// Verify what we got
-	retry.Run(t, func(r *retry.R) {
-		syncer.Lock()
-		defer syncer.Unlock()
-		actual := syncer.Registrations
+	// Verify what we got.
+	retry.RunWith(&retry.Timer{Timeout: 7 * time.Second, Wait: 1 * time.Second}, t, func(r *retry.R) {
+		actual := syncer.Registrations()
 		require.Len(r, actual, 2)
 		require.Equal(r, "foo", actual[0].Service.Service)
 		require.Equal(r, "3.3.3.3", actual[0].Service.Address)
@@ -339,7 +316,7 @@ func TestServiceResource_externalIP(t *testing.T) {
 	})
 }
 
-// Test externalIP with Prefix
+// Test externalIP with Prefix.
 func TestServiceResource_externalIPPrefix(t *testing.T) {
 	t.Parallel()
 	client := fake.NewSimpleClientset()
@@ -347,21 +324,19 @@ func TestServiceResource_externalIPPrefix(t *testing.T) {
 	serviceResource := defaultServiceResource(client, syncer)
 	serviceResource.ConsulServicePrefix = "prefix"
 
-	// Start the controller
+	// Start the controller.
 	closer := controller.TestControllerRun(&serviceResource)
 	defer closer()
 
-	// Insert an LB service
+	// Insert an LB service.
 	svc := lbService("foo", metav1.NamespaceDefault, "1.2.3.4")
 	svc.Spec.ExternalIPs = []string{"3.3.3.3", "4.4.4.4"}
 	_, err := client.CoreV1().Services(metav1.NamespaceDefault).Create(context.Background(), svc, metav1.CreateOptions{})
 	require.NoError(t, err)
 
-	// Verify what we got
-	retry.Run(t, func(r *retry.R) {
-		syncer.Lock()
-		defer syncer.Unlock()
-		actual := syncer.Registrations
+	// Verify what we got.
+	retry.RunWith(&retry.Timer{Timeout: 7 * time.Second, Wait: 1 * time.Second}, t, func(r *retry.R) {
+		actual := syncer.Registrations()
 		require.Len(r, actual, 2)
 		require.Equal(r, "prefixfoo", actual[0].Service.Service)
 		require.Equal(r, "3.3.3.3", actual[0].Service.Address)
@@ -377,27 +352,25 @@ func TestServiceResource_lb(t *testing.T) {
 	syncer := newTestSyncer()
 	serviceResource := defaultServiceResource(client, syncer)
 
-	// Start the controller
+	// Start the controller.
 	closer := controller.TestControllerRun(&serviceResource)
 	defer closer()
 
-	// Insert an LB service
+	// Insert an LB service.
 	svc := lbService("foo", metav1.NamespaceDefault, "1.2.3.4")
 	_, err := client.CoreV1().Services(metav1.NamespaceDefault).Create(context.Background(), svc, metav1.CreateOptions{})
 	require.NoError(t, err)
 
-	// Verify what we got
-	retry.Run(t, func(r *retry.R) {
-		syncer.Lock()
-		defer syncer.Unlock()
-		actual := syncer.Registrations
+	// Verify what we got.
+	retry.RunWith(&retry.Timer{Timeout: 7 * time.Second, Wait: 1 * time.Second}, t, func(r *retry.R) {
+		actual := syncer.Registrations()
 		require.Len(r, actual, 1)
 		require.Equal(r, "foo", actual[0].Service.Service)
 		require.Equal(r, "1.2.3.4", actual[0].Service.Address)
 	})
 }
 
-// Test that the proper registrations are generated for a LoadBalancer with a prefix
+// Test that the proper registrations are generated for a LoadBalancer with a prefix.
 func TestServiceResource_lbPrefix(t *testing.T) {
 	t.Parallel()
 	client := fake.NewSimpleClientset()
@@ -405,20 +378,18 @@ func TestServiceResource_lbPrefix(t *testing.T) {
 	serviceResource := defaultServiceResource(client, syncer)
 	serviceResource.ConsulServicePrefix = "prefix"
 
-	// Start the controller
+	// Start the controller.
 	closer := controller.TestControllerRun(&serviceResource)
 	defer closer()
 
-	// Insert an LB service
+	// Insert an LB service.
 	svc := lbService("foo", metav1.NamespaceDefault, "1.2.3.4")
 	_, err := client.CoreV1().Services(metav1.NamespaceDefault).Create(context.Background(), svc, metav1.CreateOptions{})
 	require.NoError(t, err)
 
-	// Verify what we got
-	retry.Run(t, func(r *retry.R) {
-		syncer.Lock()
-		defer syncer.Unlock()
-		actual := syncer.Registrations
+	// Verify what we got.
+	retry.RunWith(&retry.Timer{Timeout: 7 * time.Second, Wait: 1 * time.Second}, t, func(r *retry.R) {
+		actual := syncer.Registrations()
 		require.Len(r, actual, 1)
 		require.Equal(r, "prefixfoo", actual[0].Service.Service)
 		require.Equal(r, "1.2.3.4", actual[0].Service.Address)
@@ -433,11 +404,11 @@ func TestServiceResource_lbMultiEndpoint(t *testing.T) {
 	syncer := newTestSyncer()
 	serviceResource := defaultServiceResource(client, syncer)
 
-	// Start the controller
+	// Start the controller.
 	closer := controller.TestControllerRun(&serviceResource)
 	defer closer()
 
-	// Insert an LB service
+	// Insert an LB service.
 	svc := lbService("foo", metav1.NamespaceDefault, "1.2.3.4")
 	svc.Status.LoadBalancer.Ingress = append(
 		svc.Status.LoadBalancer.Ingress,
@@ -446,11 +417,9 @@ func TestServiceResource_lbMultiEndpoint(t *testing.T) {
 	_, err := client.CoreV1().Services(metav1.NamespaceDefault).Create(context.Background(), svc, metav1.CreateOptions{})
 	require.NoError(t, err)
 
-	// Verify what we got
-	retry.Run(t, func(r *retry.R) {
-		syncer.Lock()
-		defer syncer.Unlock()
-		actual := syncer.Registrations
+	// Verify what we got.
+	retry.RunWith(&retry.Timer{Timeout: 7 * time.Second, Wait: 1 * time.Second}, t, func(r *retry.R) {
+		actual := syncer.Registrations()
 		require.Len(r, actual, 2)
 		require.Equal(r, "foo", actual[0].Service.Service)
 		require.Equal(r, "1.2.3.4", actual[0].Service.Address)
@@ -460,45 +429,43 @@ func TestServiceResource_lbMultiEndpoint(t *testing.T) {
 	})
 }
 
-// Test explicit name annotation
+// Test explicit name annotation.
 func TestServiceResource_lbAnnotatedName(t *testing.T) {
 	t.Parallel()
 	client := fake.NewSimpleClientset()
 	syncer := newTestSyncer()
 	serviceResource := defaultServiceResource(client, syncer)
 
-	// Start the controller
+	// Start the controller.
 	closer := controller.TestControllerRun(&serviceResource)
 	defer closer()
 
-	// Insert an LB service
+	// Insert an LB service.
 	svc := lbService("foo", metav1.NamespaceDefault, "1.2.3.4")
 	svc.Annotations[annotationServiceName] = "bar"
 	_, err := client.CoreV1().Services(metav1.NamespaceDefault).Create(context.Background(), svc, metav1.CreateOptions{})
 	require.NoError(t, err)
 
-	// Verify what we got
-	retry.Run(t, func(r *retry.R) {
-		syncer.Lock()
-		defer syncer.Unlock()
-		actual := syncer.Registrations
+	// Verify what we got.
+	retry.RunWith(&retry.Timer{Timeout: 7 * time.Second, Wait: 1 * time.Second}, t, func(r *retry.R) {
+		actual := syncer.Registrations()
 		require.Len(r, actual, 1)
 		require.Equal(r, "bar", actual[0].Service.Service)
 	})
 }
 
-// Test default port and additional ports in the meta
+// Test default port and additional ports in the meta.
 func TestServiceResource_lbPort(t *testing.T) {
 	t.Parallel()
 	client := fake.NewSimpleClientset()
 	syncer := newTestSyncer()
 	serviceResource := defaultServiceResource(client, syncer)
 
-	// Start the controller
+	// Start the controller.
 	closer := controller.TestControllerRun(&serviceResource)
 	defer closer()
 
-	// Insert an LB service
+	// Insert an LB service.
 	svc := lbService("foo", metav1.NamespaceDefault, "1.2.3.4")
 	svc.Spec.Ports = []apiv1.ServicePort{
 		{Name: "http", Port: 80, TargetPort: intstr.FromInt(8080)},
@@ -507,11 +474,9 @@ func TestServiceResource_lbPort(t *testing.T) {
 	_, err := client.CoreV1().Services(metav1.NamespaceDefault).Create(context.Background(), svc, metav1.CreateOptions{})
 	require.NoError(t, err)
 
-	// Verify what we got
-	retry.Run(t, func(r *retry.R) {
-		syncer.Lock()
-		defer syncer.Unlock()
-		actual := syncer.Registrations
+	// Verify what we got.
+	retry.RunWith(&retry.Timer{Timeout: 7 * time.Second, Wait: 1 * time.Second}, t, func(r *retry.R) {
+		actual := syncer.Registrations()
 		require.Len(r, actual, 1)
 		require.Equal(r, 80, actual[0].Service.Port)
 		require.Equal(r, "80", actual[0].Service.Meta["port-http"])
@@ -519,18 +484,18 @@ func TestServiceResource_lbPort(t *testing.T) {
 	})
 }
 
-// Test default port works with override annotation
+// Test default port works with override annotation.
 func TestServiceResource_lbAnnotatedPort(t *testing.T) {
 	t.Parallel()
 	client := fake.NewSimpleClientset()
 	syncer := newTestSyncer()
 	serviceResource := defaultServiceResource(client, syncer)
 
-	// Start the controller
+	// Start the controller.
 	closer := controller.TestControllerRun(&serviceResource)
 	defer closer()
 
-	// Insert an LB service
+	// Insert an LB service.
 	svc := lbService("foo", metav1.NamespaceDefault, "1.2.3.4")
 	svc.Annotations[annotationServicePort] = "rpc"
 	svc.Spec.Ports = []apiv1.ServicePort{
@@ -540,11 +505,9 @@ func TestServiceResource_lbAnnotatedPort(t *testing.T) {
 	_, err := client.CoreV1().Services(metav1.NamespaceDefault).Create(context.Background(), svc, metav1.CreateOptions{})
 	require.NoError(t, err)
 
-	// Verify what we got
-	retry.Run(t, func(r *retry.R) {
-		syncer.Lock()
-		defer syncer.Unlock()
-		actual := syncer.Registrations
+	// Verify what we got.
+	retry.RunWith(&retry.Timer{Timeout: 7 * time.Second, Wait: 1 * time.Second}, t, func(r *retry.R) {
+		actual := syncer.Registrations()
 		require.Len(r, actual, 1)
 		require.Equal(r, 8500, actual[0].Service.Port)
 		require.Equal(r, "80", actual[0].Service.Meta["port-http"])
@@ -552,7 +515,7 @@ func TestServiceResource_lbAnnotatedPort(t *testing.T) {
 	})
 }
 
-// Test annotated tags
+// Test annotated tags.
 func TestServiceResource_lbAnnotatedTags(t *testing.T) {
 	t.Parallel()
 	client := fake.NewSimpleClientset()
@@ -560,54 +523,50 @@ func TestServiceResource_lbAnnotatedTags(t *testing.T) {
 	serviceResource := defaultServiceResource(client, syncer)
 	serviceResource.ConsulK8STag = TestConsulK8STag
 
-	// Start the controller
+	// Start the controller.
 	closer := controller.TestControllerRun(&serviceResource)
 	defer closer()
 
-	// Insert an LB service
+	// Insert an LB service.
 	svc := lbService("foo", metav1.NamespaceDefault, "1.2.3.4")
 	svc.Annotations[annotationServiceTags] = `one, leadingwhitespace,trailingwhitespace ,\,leadingcomma,trailingcomma\,,middle\,comma,,`
 	_, err := client.CoreV1().Services(metav1.NamespaceDefault).Create(context.Background(), svc, metav1.CreateOptions{})
 	require.NoError(t, err)
 
-	// Verify what we got
-	retry.Run(t, func(r *retry.R) {
-		syncer.Lock()
-		defer syncer.Unlock()
-		actual := syncer.Registrations
+	// Verify what we got.
+	retry.RunWith(&retry.Timer{Timeout: 7 * time.Second, Wait: 1 * time.Second}, t, func(r *retry.R) {
+		actual := syncer.Registrations()
 		require.Len(r, actual, 1)
 		require.Equal(r, []string{"k8s", "one", "leadingwhitespace", "trailingwhitespace", ",leadingcomma", "trailingcomma,", "middle,comma"}, actual[0].Service.Tags)
 	})
 }
 
-// Test annotated service meta
+// Test annotated service meta.
 func TestServiceResource_lbAnnotatedMeta(t *testing.T) {
 	t.Parallel()
 	client := fake.NewSimpleClientset()
 	syncer := newTestSyncer()
 	serviceResource := defaultServiceResource(client, syncer)
 
-	// Start the controller
+	// Start the controller.
 	closer := controller.TestControllerRun(&serviceResource)
 	defer closer()
 
-	// Insert an LB service
+	// Insert an LB service.
 	svc := lbService("foo", metav1.NamespaceDefault, "1.2.3.4")
 	svc.Annotations[annotationServiceMetaPrefix+"foo"] = "bar"
 	_, err := client.CoreV1().Services(metav1.NamespaceDefault).Create(context.Background(), svc, metav1.CreateOptions{})
 	require.NoError(t, err)
 
-	// Verify what we got
-	retry.Run(t, func(r *retry.R) {
-		syncer.Lock()
-		defer syncer.Unlock()
-		actual := syncer.Registrations
+	// Verify what we got.
+	retry.RunWith(&retry.Timer{Timeout: 7 * time.Second, Wait: 1 * time.Second}, t, func(r *retry.R) {
+		actual := syncer.Registrations()
 		require.Len(r, actual, 1)
 		require.Equal(r, "bar", actual[0].Service.Meta["foo"])
 	})
 }
 
-// Test that with LoadBalancerEndpointsSync set to true we track the IP of the endpoints not the LB IP/name
+// Test that with LoadBalancerEndpointsSync set to true we track the IP of the endpoints not the LB IP/name.
 func TestServiceResource_lbRegisterEndpoints(t *testing.T) {
 	t.Parallel()
 	client := fake.NewSimpleClientset()
@@ -615,13 +574,13 @@ func TestServiceResource_lbRegisterEndpoints(t *testing.T) {
 	serviceResource := defaultServiceResource(client, syncer)
 	serviceResource.LoadBalancerEndpointsSync = true
 
-	// Start the controller
+	// Start the controller.
 	closer := controller.TestControllerRun(&serviceResource)
 	defer closer()
 
 	node1, _ := createNodes(t, client)
 
-	// Insert the endpoints
+	// Insert the endpoints.
 	_, err := client.CoreV1().Endpoints(metav1.NamespaceDefault).Create(
 		context.Background(),
 		&apiv1.Endpoints{
@@ -644,16 +603,14 @@ func TestServiceResource_lbRegisterEndpoints(t *testing.T) {
 		metav1.CreateOptions{})
 	require.NoError(t, err)
 
-	// Insert an LB service
+	// Insert an LB service.
 	svc := lbService("foo", metav1.NamespaceDefault, "1.2.3.4")
 	_, err = client.CoreV1().Services(metav1.NamespaceDefault).Create(context.Background(), svc, metav1.CreateOptions{})
 	require.NoError(t, err)
 
-	// Verify what we got
-	retry.Run(t, func(r *retry.R) {
-		syncer.Lock()
-		defer syncer.Unlock()
-		actual := syncer.Registrations
+	// Verify what we got.
+	retry.RunWith(&retry.Timer{Timeout: 7 * time.Second, Wait: 1 * time.Second}, t, func(r *retry.R) {
+		actual := syncer.Registrations()
 		require.Len(r, actual, 1)
 		require.Equal(r, "foo", actual[0].Service.Service)
 		require.Equal(r, "8.8.8.8", actual[0].Service.Address)
@@ -670,7 +627,7 @@ func TestServiceResource_nodePort(t *testing.T) {
 	serviceResource := defaultServiceResource(client, syncer)
 	serviceResource.NodePortSync = ExternalOnly
 
-	// Start the controller
+	// Start the controller.
 	closer := controller.TestControllerRun(&serviceResource)
 	defer closer()
 
@@ -678,16 +635,14 @@ func TestServiceResource_nodePort(t *testing.T) {
 
 	createEndpoints(t, client, "foo", metav1.NamespaceDefault)
 
-	// Insert the service
+	// Insert the service.
 	svc := nodePortService("foo", metav1.NamespaceDefault)
 	_, err := client.CoreV1().Services(metav1.NamespaceDefault).Create(context.Background(), svc, metav1.CreateOptions{})
 	require.NoError(t, err)
 
-	// Verify what we got
-	retry.Run(t, func(r *retry.R) {
-		syncer.Lock()
-		defer syncer.Unlock()
-		actual := syncer.Registrations
+	// Verify what we got.
+	retry.RunWith(&retry.Timer{Timeout: 7 * time.Second, Wait: 1 * time.Second}, t, func(r *retry.R) {
+		actual := syncer.Registrations()
 		require.Len(r, actual, 2)
 		require.Equal(r, "foo", actual[0].Service.Service)
 		require.Equal(r, "1.2.3.4", actual[0].Service.Address)
@@ -701,7 +656,7 @@ func TestServiceResource_nodePort(t *testing.T) {
 	})
 }
 
-// Test node port works with prefix
+// Test node port works with prefix.
 func TestServiceResource_nodePortPrefix(t *testing.T) {
 	t.Parallel()
 	client := fake.NewSimpleClientset()
@@ -710,7 +665,7 @@ func TestServiceResource_nodePortPrefix(t *testing.T) {
 	serviceResource.NodePortSync = ExternalOnly
 	serviceResource.ConsulServicePrefix = "prefix"
 
-	// Start the controller
+	// Start the controller.
 	closer := controller.TestControllerRun(&serviceResource)
 	defer closer()
 
@@ -718,16 +673,14 @@ func TestServiceResource_nodePortPrefix(t *testing.T) {
 
 	createEndpoints(t, client, "foo", metav1.NamespaceDefault)
 
-	// Insert the service
+	// Insert the service.
 	svc := nodePortService("foo", metav1.NamespaceDefault)
 	_, err := client.CoreV1().Services(metav1.NamespaceDefault).Create(context.Background(), svc, metav1.CreateOptions{})
 	require.NoError(t, err)
 
-	// Verify what we got
-	retry.Run(t, func(r *retry.R) {
-		syncer.Lock()
-		defer syncer.Unlock()
-		actual := syncer.Registrations
+	// Verify what we got.
+	retry.RunWith(&retry.Timer{Timeout: 7 * time.Second, Wait: 1 * time.Second}, t, func(r *retry.R) {
+		actual := syncer.Registrations()
 		require.Len(r, actual, 2)
 		require.Equal(r, "prefixfoo", actual[0].Service.Service)
 		require.Equal(r, "1.2.3.4", actual[0].Service.Address)
@@ -750,13 +703,13 @@ func TestServiceResource_nodePort_singleEndpoint(t *testing.T) {
 	serviceResource := defaultServiceResource(client, syncer)
 	serviceResource.NodePortSync = ExternalOnly
 
-	// Start the controller
+	// Start the controller.
 	closer := controller.TestControllerRun(&serviceResource)
 	defer closer()
 
 	node1, _ := createNodes(t, client)
 
-	// Insert the endpoints
+	// Insert the endpoints.
 	_, err := client.CoreV1().Endpoints(metav1.NamespaceDefault).Create(
 		context.Background(),
 		&apiv1.Endpoints{
@@ -779,16 +732,14 @@ func TestServiceResource_nodePort_singleEndpoint(t *testing.T) {
 		metav1.CreateOptions{})
 	require.NoError(t, err)
 
-	// Insert the service
+	// Insert the service.
 	svc := nodePortService("foo", metav1.NamespaceDefault)
 	_, err = client.CoreV1().Services(metav1.NamespaceDefault).Create(context.Background(), svc, metav1.CreateOptions{})
 	require.NoError(t, err)
 
-	// Verify what we got
-	retry.Run(t, func(r *retry.R) {
-		syncer.Lock()
-		defer syncer.Unlock()
-		actual := syncer.Registrations
+	// Verify what we got.
+	retry.RunWith(&retry.Timer{Timeout: 7 * time.Second, Wait: 1 * time.Second}, t, func(r *retry.R) {
+		actual := syncer.Registrations()
 		require.Len(r, actual, 1)
 		require.Equal(r, "foo", actual[0].Service.Service)
 		require.Equal(r, "1.2.3.4", actual[0].Service.Address)
@@ -805,7 +756,7 @@ func TestServiceResource_nodePortAnnotatedPort(t *testing.T) {
 	serviceResource := defaultServiceResource(client, syncer)
 	serviceResource.NodePortSync = ExternalOnly
 
-	// Start the controller
+	// Start the controller.
 	closer := controller.TestControllerRun(&serviceResource)
 	defer closer()
 
@@ -813,17 +764,15 @@ func TestServiceResource_nodePortAnnotatedPort(t *testing.T) {
 
 	createEndpoints(t, client, "foo", metav1.NamespaceDefault)
 
-	// Insert the service
+	// Insert the service.
 	svc := nodePortService("foo", metav1.NamespaceDefault)
 	svc.Annotations = map[string]string{annotationServicePort: "rpc"}
 	_, err := client.CoreV1().Services(metav1.NamespaceDefault).Create(context.Background(), svc, metav1.CreateOptions{})
 	require.NoError(t, err)
 
-	// Verify what we got
-	retry.Run(t, func(r *retry.R) {
-		syncer.Lock()
-		defer syncer.Unlock()
-		actual := syncer.Registrations
+	// Verify what we got.
+	retry.RunWith(&retry.Timer{Timeout: 7 * time.Second, Wait: 1 * time.Second}, t, func(r *retry.R) {
+		actual := syncer.Registrations()
 		require.Len(r, actual, 2)
 		require.Equal(r, "foo", actual[0].Service.Service)
 		require.Equal(r, "1.2.3.4", actual[0].Service.Address)
@@ -845,7 +794,7 @@ func TestServiceResource_nodePortUnnamedPort(t *testing.T) {
 	serviceResource := defaultServiceResource(client, syncer)
 	serviceResource.NodePortSync = ExternalOnly
 
-	// Start the controller
+	// Start the controller.
 	closer := controller.TestControllerRun(&serviceResource)
 	defer closer()
 
@@ -853,7 +802,7 @@ func TestServiceResource_nodePortUnnamedPort(t *testing.T) {
 
 	createEndpoints(t, client, "foo", metav1.NamespaceDefault)
 
-	// Insert the service
+	// Insert the service.
 	svc := nodePortService("foo", metav1.NamespaceDefault)
 	// Override service ports
 	svc.Spec.Ports = []apiv1.ServicePort{
@@ -863,11 +812,9 @@ func TestServiceResource_nodePortUnnamedPort(t *testing.T) {
 	_, err := client.CoreV1().Services(metav1.NamespaceDefault).Create(context.Background(), svc, metav1.CreateOptions{})
 	require.NoError(t, err)
 
-	// Verify what we got
-	retry.Run(t, func(r *retry.R) {
-		syncer.Lock()
-		defer syncer.Unlock()
-		actual := syncer.Registrations
+	// Verify what we got.
+	retry.RunWith(&retry.Timer{Timeout: 7 * time.Second, Wait: 1 * time.Second}, t, func(r *retry.R) {
+		actual := syncer.Registrations()
 		require.Len(r, actual, 2)
 		require.Equal(r, "foo", actual[0].Service.Service)
 		require.Equal(r, "1.2.3.4", actual[0].Service.Address)
@@ -890,7 +837,7 @@ func TestServiceResource_nodePort_internalOnlySync(t *testing.T) {
 	serviceResource := defaultServiceResource(client, syncer)
 	serviceResource.NodePortSync = InternalOnly
 
-	// Start the controller
+	// Start the controller.
 	closer := controller.TestControllerRun(&serviceResource)
 	defer closer()
 
@@ -898,16 +845,14 @@ func TestServiceResource_nodePort_internalOnlySync(t *testing.T) {
 
 	createEndpoints(t, client, "foo", metav1.NamespaceDefault)
 
-	// Insert the service
+	// Insert the service.
 	svc := nodePortService("foo", metav1.NamespaceDefault)
 	_, err := client.CoreV1().Services(metav1.NamespaceDefault).Create(context.Background(), svc, metav1.CreateOptions{})
 	require.NoError(t, err)
 
-	// Verify what we got
-	retry.Run(t, func(r *retry.R) {
-		syncer.Lock()
-		defer syncer.Unlock()
-		actual := syncer.Registrations
+	// Verify what we got.
+	retry.RunWith(&retry.Timer{Timeout: 7 * time.Second, Wait: 1 * time.Second}, t, func(r *retry.R) {
+		actual := syncer.Registrations()
 		require.Len(r, actual, 2)
 		require.Equal(r, "foo", actual[0].Service.Service)
 		require.Equal(r, "4.5.6.7", actual[0].Service.Address)
@@ -922,7 +867,7 @@ func TestServiceResource_nodePort_internalOnlySync(t *testing.T) {
 }
 
 // Test that the proper registrations are generated for a NodePort type
-// when preferring to sync external Node IPs over internal IPs
+// when preferring to sync external Node IPs over internal IPs.
 func TestServiceResource_nodePort_externalFirstSync(t *testing.T) {
 	t.Parallel()
 	client := fake.NewSimpleClientset()
@@ -930,7 +875,7 @@ func TestServiceResource_nodePort_externalFirstSync(t *testing.T) {
 	serviceResource := defaultServiceResource(client, syncer)
 	serviceResource.NodePortSync = ExternalFirst
 
-	// Start the controller
+	// Start the controller.
 	closer := controller.TestControllerRun(&serviceResource)
 	defer closer()
 
@@ -946,16 +891,14 @@ func TestServiceResource_nodePort_externalFirstSync(t *testing.T) {
 
 	createEndpoints(t, client, "foo", metav1.NamespaceDefault)
 
-	// Insert the service
+	// Insert the service.
 	svc := nodePortService("foo", metav1.NamespaceDefault)
 	_, err = client.CoreV1().Services(metav1.NamespaceDefault).Create(context.Background(), svc, metav1.CreateOptions{})
 	require.NoError(t, err)
 
-	// Verify what we got
-	retry.Run(t, func(r *retry.R) {
-		syncer.Lock()
-		defer syncer.Unlock()
-		actual := syncer.Registrations
+	// Verify what we got.
+	retry.RunWith(&retry.Timer{Timeout: 7 * time.Second, Wait: 1 * time.Second}, t, func(r *retry.R) {
+		actual := syncer.Registrations()
 		require.Len(r, actual, 2)
 		require.Equal(r, "foo", actual[0].Service.Service)
 		require.Equal(r, "4.5.6.7", actual[0].Service.Address)
@@ -977,23 +920,21 @@ func TestServiceResource_clusterIP(t *testing.T) {
 	serviceResource := defaultServiceResource(client, syncer)
 	serviceResource.ClusterIPSync = true
 
-	// Start the controller
+	// Start the controller.
 	closer := controller.TestControllerRun(&serviceResource)
 	defer closer()
 
-	// Insert the service
+	// Insert the service.
 	svc := clusterIPService("foo", metav1.NamespaceDefault)
 	_, err := client.CoreV1().Services(metav1.NamespaceDefault).Create(context.Background(), svc, metav1.CreateOptions{})
 	require.NoError(t, err)
 
-	// Insert the endpoints
+	// Insert the endpoints.
 	createEndpoints(t, client, "foo", metav1.NamespaceDefault)
 
-	// Verify what we got
-	retry.Run(t, func(r *retry.R) {
-		syncer.Lock()
-		defer syncer.Unlock()
-		actual := syncer.Registrations
+	// Verify what we got.
+	retry.RunWith(&retry.Timer{Timeout: 7 * time.Second, Wait: 1 * time.Second}, t, func(r *retry.R) {
+		actual := syncer.Registrations()
 		require.Len(r, actual, 2)
 		require.Equal(r, "foo", actual[0].Service.Service)
 		require.Equal(r, "1.1.1.1", actual[0].Service.Address)
@@ -1005,7 +946,7 @@ func TestServiceResource_clusterIP(t *testing.T) {
 	})
 }
 
-// Test clusterIP with prefix
+// Test clusterIP with prefix.
 func TestServiceResource_clusterIPPrefix(t *testing.T) {
 	t.Parallel()
 	client := fake.NewSimpleClientset()
@@ -1014,23 +955,21 @@ func TestServiceResource_clusterIPPrefix(t *testing.T) {
 	serviceResource.ClusterIPSync = true
 	serviceResource.ConsulServicePrefix = "prefix"
 
-	// Start the controller
+	// Start the controller.
 	closer := controller.TestControllerRun(&serviceResource)
 	defer closer()
 
-	// Insert the service
+	// Insert the service.
 	svc := clusterIPService("foo", metav1.NamespaceDefault)
 	_, err := client.CoreV1().Services(metav1.NamespaceDefault).Create(context.Background(), svc, metav1.CreateOptions{})
 	require.NoError(t, err)
 
-	// Insert the endpoints
+	// Insert the endpoints.
 	createEndpoints(t, client, "foo", metav1.NamespaceDefault)
 
-	// Verify what we got
-	retry.Run(t, func(r *retry.R) {
-		syncer.Lock()
-		defer syncer.Unlock()
-		actual := syncer.Registrations
+	// Verify what we got.
+	retry.RunWith(&retry.Timer{Timeout: 7 * time.Second, Wait: 1 * time.Second}, t, func(r *retry.R) {
+		actual := syncer.Registrations()
 		require.Len(r, actual, 2)
 		require.Equal(r, "prefixfoo", actual[0].Service.Service)
 		require.Equal(r, "1.1.1.1", actual[0].Service.Address)
@@ -1051,24 +990,22 @@ func TestServiceResource_clusterIPAnnotatedPortName(t *testing.T) {
 	serviceResource := defaultServiceResource(client, syncer)
 	serviceResource.ClusterIPSync = true
 
-	// Start the controller
+	// Start the controller.
 	closer := controller.TestControllerRun(&serviceResource)
 	defer closer()
 
-	// Insert the service
+	// Insert the service.
 	svc := clusterIPService("foo", metav1.NamespaceDefault)
 	svc.Annotations[annotationServicePort] = "rpc"
 	_, err := client.CoreV1().Services(metav1.NamespaceDefault).Create(context.Background(), svc, metav1.CreateOptions{})
 	require.NoError(t, err)
 
-	// Insert the endpoints
+	// Insert the endpoints.
 	createEndpoints(t, client, "foo", metav1.NamespaceDefault)
 
-	// Verify what we got
-	retry.Run(t, func(r *retry.R) {
-		syncer.Lock()
-		defer syncer.Unlock()
-		actual := syncer.Registrations
+	// Verify what we got.
+	retry.RunWith(&retry.Timer{Timeout: 7 * time.Second, Wait: 1 * time.Second}, t, func(r *retry.R) {
+		actual := syncer.Registrations()
 		require.Len(r, actual, 2)
 		require.Equal(r, "foo", actual[0].Service.Service)
 		require.Equal(r, "1.1.1.1", actual[0].Service.Address)
@@ -1089,24 +1026,22 @@ func TestServiceResource_clusterIPAnnotatedPortNumber(t *testing.T) {
 	serviceResource := defaultServiceResource(client, syncer)
 	serviceResource.ClusterIPSync = true
 
-	// Start the controller
+	// Start the controller.
 	closer := controller.TestControllerRun(&serviceResource)
 	defer closer()
 
-	// Insert the service
+	// Insert the service.
 	svc := clusterIPService("foo", metav1.NamespaceDefault)
 	svc.Annotations[annotationServicePort] = "4141"
 	_, err := client.CoreV1().Services(metav1.NamespaceDefault).Create(context.Background(), svc, metav1.CreateOptions{})
 	require.NoError(t, err)
 
-	// Insert the endpoints
+	// Insert the endpoints.
 	createEndpoints(t, client, "foo", metav1.NamespaceDefault)
 
-	// Verify what we got
-	retry.Run(t, func(r *retry.R) {
-		syncer.Lock()
-		defer syncer.Unlock()
-		actual := syncer.Registrations
+	// Verify what we got.
+	retry.RunWith(&retry.Timer{Timeout: 7 * time.Second, Wait: 1 * time.Second}, t, func(r *retry.R) {
+		actual := syncer.Registrations()
 		require.Len(r, actual, 2)
 		require.Equal(r, "foo", actual[0].Service.Service)
 		require.Equal(r, "1.1.1.1", actual[0].Service.Address)
@@ -1126,11 +1061,11 @@ func TestServiceResource_clusterIPUnnamedPorts(t *testing.T) {
 	serviceResource := defaultServiceResource(client, syncer)
 	serviceResource.ClusterIPSync = true
 
-	// Start the controller
+	// Start the controller.
 	closer := controller.TestControllerRun(&serviceResource)
 	defer closer()
 
-	// Insert the service
+	// Insert the service.
 	svc := clusterIPService("foo", metav1.NamespaceDefault)
 	svc.Spec.Ports = []apiv1.ServicePort{
 		{Port: 80, TargetPort: intstr.FromInt(8080)},
@@ -1139,14 +1074,12 @@ func TestServiceResource_clusterIPUnnamedPorts(t *testing.T) {
 	_, err := client.CoreV1().Services(metav1.NamespaceDefault).Create(context.Background(), svc, metav1.CreateOptions{})
 	require.NoError(t, err)
 
-	// Insert the endpoints
+	// Insert the endpoints.
 	createEndpoints(t, client, "foo", metav1.NamespaceDefault)
 
-	// Verify what we got
-	retry.Run(t, func(r *retry.R) {
-		syncer.Lock()
-		defer syncer.Unlock()
-		actual := syncer.Registrations
+	// Verify what we got.
+	retry.RunWith(&retry.Timer{Timeout: 7 * time.Second, Wait: 1 * time.Second}, t, func(r *retry.R) {
+		actual := syncer.Registrations()
 		require.Len(r, actual, 2)
 		require.Equal(r, "foo", actual[0].Service.Service)
 		require.Equal(r, "1.1.1.1", actual[0].Service.Address)
@@ -1167,28 +1100,26 @@ func TestServiceResource_clusterIPSyncDisabled(t *testing.T) {
 	serviceResource := defaultServiceResource(client, syncer)
 	serviceResource.ClusterIPSync = false
 
-	// Start the controller
+	// Start the controller.
 	closer := controller.TestControllerRun(&serviceResource)
 	defer closer()
 
-	// Insert the service
+	// Insert the service.
 	svc := clusterIPService("foo", metav1.NamespaceDefault)
 	_, err := client.CoreV1().Services(metav1.NamespaceDefault).Create(context.Background(), svc, metav1.CreateOptions{})
 	require.NoError(t, err)
 
-	// Insert the endpoints
+	// Insert the endpoints.
 	createEndpoints(t, client, "foo", metav1.NamespaceDefault)
 
-	// Verify what we got
-	retry.Run(t, func(r *retry.R) {
-		syncer.Lock()
-		defer syncer.Unlock()
-		actual := syncer.Registrations
+	// Verify what we got.
+	retry.RunWith(&retry.Timer{Timeout: 7 * time.Second, Wait: 1 * time.Second}, t, func(r *retry.R) {
+		actual := syncer.Registrations()
 		require.Len(r, actual, 0)
 	})
 }
 
-// Test that the ClusterIP services are synced when watching all namespaces
+// Test that the ClusterIP services are synced when watching all namespaces.
 func TestServiceResource_clusterIPAllNamespaces(t *testing.T) {
 	t.Parallel()
 	client := fake.NewSimpleClientset()
@@ -1197,23 +1128,21 @@ func TestServiceResource_clusterIPAllNamespaces(t *testing.T) {
 	serviceResource := defaultServiceResource(client, syncer)
 	serviceResource.ClusterIPSync = true
 
-	// Start the controller
+	// Start the controller.
 	closer := controller.TestControllerRun(&serviceResource)
 	defer closer()
 
-	// Insert the service
+	// Insert the service.
 	svc := clusterIPService("foo", testNamespace)
 	_, err := client.CoreV1().Services(testNamespace).Create(context.Background(), svc, metav1.CreateOptions{})
 	require.NoError(t, err)
 
-	// Insert the endpoints
+	// Insert the endpoints.
 	createEndpoints(t, client, "foo", testNamespace)
 
-	// Verify what we got
-	retry.Run(t, func(r *retry.R) {
-		syncer.Lock()
-		defer syncer.Unlock()
-		actual := syncer.Registrations
+	// Verify what we got.
+	retry.RunWith(&retry.Timer{Timeout: 7 * time.Second, Wait: 1 * time.Second}, t, func(r *retry.R) {
+		actual := syncer.Registrations()
 		require.Len(r, actual, 2)
 		require.Equal(r, "foo", actual[0].Service.Service)
 		require.Equal(r, "1.1.1.1", actual[0].Service.Address)
@@ -1233,11 +1162,11 @@ func TestServiceResource_clusterIPTargetPortNamed(t *testing.T) {
 	serviceResource := defaultServiceResource(client, syncer)
 	serviceResource.ClusterIPSync = true
 
-	// Start the controller
+	// Start the controller.
 	closer := controller.TestControllerRun(&serviceResource)
 	defer closer()
 
-	// Insert the service
+	// Insert the service.
 	svc := clusterIPService("foo", metav1.NamespaceDefault)
 	svc.Annotations[annotationServicePort] = "rpc"
 	svc.Spec.Ports = []apiv1.ServicePort{
@@ -1247,14 +1176,12 @@ func TestServiceResource_clusterIPTargetPortNamed(t *testing.T) {
 	_, err := client.CoreV1().Services(metav1.NamespaceDefault).Create(context.Background(), svc, metav1.CreateOptions{})
 	require.NoError(t, err)
 
-	// Insert the endpoints
+	// Insert the endpoints.
 	createEndpoints(t, client, "foo", metav1.NamespaceDefault)
 
-	// Verify what we got
-	retry.Run(t, func(r *retry.R) {
-		syncer.Lock()
-		defer syncer.Unlock()
-		actual := syncer.Registrations
+	// Verify what we got.
+	retry.RunWith(&retry.Timer{Timeout: 7 * time.Second, Wait: 1 * time.Second}, t, func(r *retry.R) {
+		actual := syncer.Registrations()
 		require.Len(r, actual, 2)
 		require.Equal(r, "foo", actual[0].Service.Service)
 		require.Equal(r, "1.1.1.1", actual[0].Service.Address)
@@ -1315,7 +1242,7 @@ func TestServiceResource_AllowDenyNamespaces(t *testing.T) {
 			serviceResource.AllowK8sNamespacesSet = c.AllowList
 			serviceResource.DenyK8sNamespacesSet = c.DenyList
 
-			// Start the controller
+			// Start the controller.
 			closer := controller.TestControllerRun(&serviceResource)
 			defer closer()
 
@@ -1329,17 +1256,13 @@ func TestServiceResource_AllowDenyNamespaces(t *testing.T) {
 
 			// Test we got registrations from the expected namespaces.
 			retry.Run(tt, func(r *retry.R) {
-				syncer.Lock()
-				defer syncer.Unlock()
-				actual := syncer.Registrations
+				actual := syncer.Registrations()
 				require.Len(r, actual, len(c.ExpNamespaces))
 			})
 
-			syncer.Lock()
-			defer syncer.Unlock()
 			for _, expNS := range c.ExpNamespaces {
 				found := false
-				for _, reg := range syncer.Registrations {
+				for _, reg := range syncer.Registrations() {
 					// The service names are the same as their k8s destination
 					// namespaces so we can that to ensure the services were
 					// synced from the expected namespaces.
@@ -1372,9 +1295,7 @@ func TestServiceResource_singleDestNamespace(t *testing.T) {
 			require.NoError(tt, err)
 
 			retry.Run(tt, func(r *retry.R) {
-				syncer.Lock()
-				defer syncer.Unlock()
-				actual := syncer.Registrations
+				actual := syncer.Registrations()
 				require.Len(r, actual, 1)
 				require.Equal(r, consulDestNamespace, actual[0].Service.Namespace)
 			})
@@ -1400,10 +1321,8 @@ func TestServiceResource_MirroredNamespace(t *testing.T) {
 		require.NoError(t, err)
 	}
 
-	retry.Run(t, func(r *retry.R) {
-		syncer.Lock()
-		defer syncer.Unlock()
-		actual := syncer.Registrations
+	retry.RunWith(&retry.Timer{Timeout: 7 * time.Second, Wait: 1 * time.Second}, t, func(r *retry.R) {
+		actual := syncer.Registrations()
 		require.Len(r, actual, 3)
 		for _, expNS := range k8sNamespaces {
 			found := false
@@ -1436,10 +1355,8 @@ func TestServiceResource_MirroredPrefixNamespace(t *testing.T) {
 		require.NoError(t, err)
 	}
 
-	retry.Run(t, func(r *retry.R) {
-		syncer.Lock()
-		defer syncer.Unlock()
-		actual := syncer.Registrations
+	retry.RunWith(&retry.Timer{Timeout: 7 * time.Second, Wait: 1 * time.Second}, t, func(r *retry.R) {
+		actual := syncer.Registrations()
 		require.Len(r, actual, 3)
 		for _, expNS := range k8sNamespaces {
 			found := false

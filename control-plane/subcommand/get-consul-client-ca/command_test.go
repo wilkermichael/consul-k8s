@@ -236,6 +236,7 @@ func TestRun_GetsOnlyActiveRoot(t *testing.T) {
 	})
 	require.NoError(t, err)
 	defer a.Stop()
+	a.WaitForActiveCARoot(t)
 
 	client, err := api.NewClient(&api.Config{
 		Address: a.HTTPSAddr,

@@ -8,7 +8,7 @@ import (
 // returned function should be called to stop the controller. The returned
 // function will block until the controller stops.
 func TestControllerRun(r Resource) func() {
-	c := &Controller{Log: hclog.Default(), Resource: r}
+	c := Controller{Log: hclog.Default(), Resource: r}
 
 	stopCh := make(chan struct{})
 	doneCh := make(chan struct{})
