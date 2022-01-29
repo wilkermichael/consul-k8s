@@ -930,45 +930,45 @@ workflows:
             - go-fmt-and-vet-helm-gen
       - validate-helm-gen
       - unit-test-helm-templates
-      # Build control plane binaries
-      - build-distro:
-          OS: "freebsd linux windows"
-          ARCH: "386"
-          name: build-distros-386
-          requires:
-            - test-control-plane
-            - test-enterprise-control-plane
-      - build-distro:
-          OS: "darwin freebsd linux solaris windows"
-          ARCH: "amd64"
-          name: build-distros-amd64
-          requires:
-            - test-control-plane
-            - test-enterprise-control-plane
-      - build-distro:
-          OS: "linux"
-          ARCH: "arm arm64"
-          name: build-distros-arm-arm64
-          requires:
-            - test-control-plane
-            - test-enterprise-control-plane
-      - dev-upload-docker:
-          context: consul-ci
-          requires:
-            - build-distros-amd64
-      # Run acceptance tests using the docker image built for the control plane
-      - acceptance:
-          requires:
-            - dev-upload-docker
-            - unit-test-helm-templates
-            - unit-acceptance-framework
-            - unit-cli
-      - acceptance-tproxy:
-          requires:
-            - dev-upload-docker
-            - unit-test-helm-templates
-            - unit-acceptance-framework
-            - unit-cli
+#      # Build control plane binaries
+#      - build-distro:
+#          OS: "freebsd linux windows"
+#          ARCH: "386"
+#          name: build-distros-386
+#          requires:
+#            - test-control-plane
+#            - test-enterprise-control-plane
+#      - build-distro:
+#          OS: "darwin freebsd linux solaris windows"
+#          ARCH: "amd64"
+#          name: build-distros-amd64
+#          requires:
+#            - test-control-plane
+#            - test-enterprise-control-plane
+#      - build-distro:
+#          OS: "linux"
+#          ARCH: "arm arm64"
+#          name: build-distros-arm-arm64
+#          requires:
+#            - test-control-plane
+#            - test-enterprise-control-plane
+#      - dev-upload-docker:
+#          context: consul-ci
+#          requires:
+#            - build-distros-amd64
+#      # Run acceptance tests using the docker image built for the control plane
+#      - acceptance:
+#          requires:
+#            - dev-upload-docker
+#            - unit-test-helm-templates
+#            - unit-acceptance-framework
+#            - unit-cli
+#      - acceptance-tproxy:
+#          requires:
+#            - dev-upload-docker
+#            - unit-test-helm-templates
+#            - unit-acceptance-framework
+#            - unit-cli
   nightly-acceptance-tests:
     triggers:
       - schedule:
