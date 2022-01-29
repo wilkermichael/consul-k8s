@@ -902,34 +902,34 @@ workflows:
   test-and-build:
     jobs:
       # Fmt, vet, lint control plane and helm code
-      - go-fmt-and-vet-control-plane
-      - lint-control-plane
-      - go-fmt-and-vet-acceptance
-      - go-fmt-and-vet-helm-gen
+#      - go-fmt-and-vet-control-plane
+#      - lint-control-plane
+#      - go-fmt-and-vet-acceptance
+#      - go-fmt-and-vet-helm-gen
       # Unit test control plane
-      - test-control-plane:
-          requires:
-            - go-fmt-and-vet-control-plane
-            - lint-control-plane
+      - test-control-plane
+#          requires:
+#            - go-fmt-and-vet-control-plane
+#            - lint-control-plane
       - test-enterprise-control-plane:
           filters:
             branches:
               # Forked pull requests have CIRCLE_BRANCH set to pull/XXX.
               ignore: /pull\/[0-9]+/
-          requires:
-            - go-fmt-and-vet-control-plane
-            - lint-control-plane
+#          requires:
+#            - go-fmt-and-vet-control-plane
+#            - lint-control-plane
       # Unit test CLI
-      - unit-cli
+#      - unit-cli
       # Unit tests for go modules in helm and bats tests for templates
-      - unit-acceptance-framework:
-          requires:
-            - go-fmt-and-vet-acceptance
-      - unit-helm-gen:
-          requires:
-            - go-fmt-and-vet-helm-gen
-      - validate-helm-gen
-      - unit-test-helm-templates
+#      - unit-acceptance-framework:
+#          requires:
+#            - go-fmt-and-vet-acceptance
+#      - unit-helm-gen:
+#          requires:
+#            - go-fmt-and-vet-helm-gen
+#      - validate-helm-gen
+#      - unit-test-helm-templates
 #      # Build control plane binaries
 #      - build-distro:
 #          OS: "freebsd linux windows"
