@@ -15,6 +15,13 @@ as well as the global.name setting.
 {{- end -}}
 {{- end -}}
 
+{{- define "consul.vaultclient" -}}
+ |
+            {{ "{{" }}- with secret "consul/data/acls/injector-token" -{{ "}}" }}
+            {{ "{{" }}- {{ ".Data.data.token" }} -{{ "}}" }}
+            {{ "{{" }}- end -{{ "}}" }}
+{{- end -}}
+
 {{- define "consul.vaultGossipTemplate" -}}
  |
             {{ "{{" }}- with secret "{{ .secretName }}" -{{ "}}" }}

@@ -14,6 +14,7 @@ import (
 	"github.com/hashicorp/consul/api"
 	"github.com/hashicorp/go-discover"
 	"github.com/hashicorp/go-hclog"
+	vapi "github.com/hashicorp/vault/api"
 	"github.com/mitchellh/cli"
 	"github.com/mitchellh/mapstructure"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
@@ -86,6 +87,10 @@ type Command struct {
 	// Flag to support a custom bootstrap token.
 	flagBootstrapTokenFile string
 
+	// Flag to write a ACL tokens as Vault secrets.
+	flagWriteVault   bool
+	flagVaultAddress string
+
 	flagLogLevel string
 	flagLogJSON  bool
 	flagTimeout  time.Duration
@@ -107,7 +112,8 @@ type Command struct {
 	once sync.Once
 	help string
 
-	providers map[string]discover.Provider
+	providers   map[string]discover.Provider
+	vaultClient *vapi.Client
 }
 
 func (c *Command) init() {
@@ -208,6 +214,10 @@ func (c *Command) init() {
 		"Path to file containing ACL token to be used for ACL replication. If set, ACL replication is enabled.")
 
 	c.flags.BoolVar(&c.flagFederation, "federation", false, "Toggle for when federation has been enabled.")
+
+	c.flags.BoolVar(&c.flagWriteVault, "vault", false, "Toggle for when federation has been enabled.")
+	c.flags.StringVar(&c.flagVaultAddress, "vault-address", "",
+		"Name of Kubernetes namespace where Consul and consul-k8s components are deployed.")
 
 	c.flags.StringVar(&c.flagBootstrapTokenFile, "bootstrap-token-file", "",
 		"Path to file containing ACL token for creating policies and tokens. This token must have 'acl:write' permissions."+
@@ -317,6 +327,26 @@ func (c *Command) Run(args []string) int {
 	if c.flagUseHTTPS {
 		scheme = "https"
 	}
+
+	config := vapi.DefaultConfig()
+	config.Address = c.flagVaultAddress
+	err = config.ConfigureTLS(&vapi.TLSConfig{
+		CAPath:   "/vault/custom/tls.crt",
+		Insecure: true,
+	})
+	if err != nil {
+		c.UI.Error(fmt.Sprintf("======= error 0 %v", err))
+		return 1
+	}
+
+	c.vaultClient, err = vapi.NewClient(config)
+	if err != nil {
+		c.UI.Error(fmt.Sprintf("======= error %v", err))
+		return 1
+	}
+	bytes, err := ioutil.ReadFile("/vault/secrets/token")
+	c.log.Error("========== reading token: %v", string(bytes))
+	c.vaultClient.SetToken(string(bytes))
 
 	var bootstrapToken string
 
@@ -515,7 +545,7 @@ func (c *Command) Run(args []string) int {
 		if c.flagEnableNamespaces {
 			err = c.createGlobalACL("connect-inject", injectRules, consulDC, isPrimary, consulClient)
 		} else {
-			err = c.createLocalACL("connect-inject", injectRules, consulDC, isPrimary, consulClient)
+			err = c.createVaultACL("connect-inject", injectRules, consulDC, isPrimary, consulClient)
 		}
 
 		if err != nil {

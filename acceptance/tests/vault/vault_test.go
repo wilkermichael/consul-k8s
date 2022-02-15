@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/hashicorp/consul-k8s/acceptance/framework/consul"
 	"github.com/hashicorp/consul-k8s/acceptance/framework/helpers"
@@ -17,6 +18,19 @@ import (
 const (
 	gossipPolicy = `
 path "consul/data/secret/gossip" {
+  capabilities = ["read"]
+}`
+	serverAclInitPolicy = `
+path "sys/policies/*" {
+  capabilities = [ "create", "read", "update", "delete", "list" ]
+}
+path "auth/kubernetes/*" {
+  capabilities = [ "create", "read", "update", "delete", "list" ]
+}
+path "consul/data/acls/*" {
+  capabilities = [ "create", "read", "update", "delete", "list" ]
+}
+path "pki/cert/ca" {
   capabilities = ["read"]
 }`
 
@@ -64,6 +78,7 @@ func TestVault(t *testing.T) {
 	vaultReleaseName := helpers.RandomName()
 	consulClientServiceAccountName := fmt.Sprintf("%s-consul-client", consulReleaseName)
 	consulServerServiceAccountName := fmt.Sprintf("%s-consul-server", consulReleaseName)
+	consulServeraclinitServiceAccountName := fmt.Sprintf("%s-consul-server-acl-init", consulReleaseName)
 
 	vaultCluster := vault.NewVaultCluster(t, ctx, cfg, vaultReleaseName)
 	vaultCluster.Create(t, ctx)
@@ -79,6 +94,10 @@ func TestVault(t *testing.T) {
 
 	// Create the Vault Policy for the connect-ca.
 	err = vaultClient.Sys().PutPolicy("connect-ca", connectCAPolicy)
+	require.NoError(t, err)
+
+	// Create the server-acl-init policy.
+	err = vaultClient.Sys().PutPolicy("server-acl-init", serverAclInitPolicy)
 	require.NoError(t, err)
 
 	// Create the Auth Roles for consul-server and consul-client.
@@ -116,6 +135,16 @@ func TestVault(t *testing.T) {
 	_, err = vaultClient.Logical().Write("auth/kubernetes/role/consul-ca", params)
 	require.NoError(t, err)
 
+	// Create the CA role that all components will use to fetch the Server CA certs.
+	params = map[string]interface{}{
+		"bound_service_account_names":      consulServeraclinitServiceAccountName,
+		"bound_service_account_namespaces": ns,
+		"policies":                         "server-acl-init",
+		"ttl":                              "24h",
+	}
+	_, err = vaultClient.Logical().Write("auth/kubernetes/role/server-acl-init", params)
+	require.NoError(t, err)
+
 	// Generate the gossip secret.
 	gossipKey, err := generateGossipSecret()
 	require.NoError(t, err)
@@ -142,7 +171,7 @@ func TestVault(t *testing.T) {
 	_, err = vaultClient.Logical().Write("pki/root/generate/internal", params)
 	require.NoError(t, err)
 
-	// Create the Vault PKI Role.
+	// Create the Vault PKI ole.
 	name := consulReleaseName + "-consul"
 	allowedDomains := fmt.Sprintf("dc1.consul,%s-server,%s-server.%s,%s-server.%s.svc", name, name, ns, name, ns)
 	params = map[string]interface{}{
@@ -164,7 +193,7 @@ func TestVault(t *testing.T) {
 
 	consulHelmValues := map[string]string{
 		// TODO: Update the global image once 1.11 is GA.
-		"global.image": "docker.mirror.hashicorp.services/hashicorpdev/consul:latest",
+		"global.imageK8S": "kyleschochenmaier/consul-k8s",
 
 		"server.enabled":              "true",
 		"server.replicas":             "1",
@@ -249,6 +278,8 @@ func TestVault(t *testing.T) {
 	} else {
 		k8s.CheckStaticServerConnectionSuccessful(t, ctx.KubectlOptions(t), "http://localhost:1234")
 	}
+
+	time.Sleep(time.Second * 3600)
 }
 
 // generateGossipSecret generates a random 32 byte secret returned as a base64 encoded string.

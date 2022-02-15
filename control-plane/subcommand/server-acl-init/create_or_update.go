@@ -16,6 +16,91 @@ func (c *Command) createLocalACL(name, rules, dc string, isPrimary bool, consulC
 	return c.createACL(name, rules, true, dc, isPrimary, consulClient)
 }
 
+func (c *Command) createVaultACL(name, rules, dc string, isPrimary bool, consulClient *api.Client) error {
+
+	// Create policy with the given rules.
+	policyName := fmt.Sprintf("%s-token", name)
+	if c.flagFederation && !isPrimary {
+		// If performing ACL replication, we must ensure policy names are
+		// globally unique so we append the datacenter name but only in secondary datacenters..
+		policyName += fmt.Sprintf("-%s", dc)
+	}
+	var datacenters []string
+	if true && dc != "" {
+		datacenters = append(datacenters, dc)
+	}
+	policyTmpl := api.ACLPolicy{
+		Name:        policyName,
+		Description: fmt.Sprintf("%s Token Policy", policyName),
+		Rules:       rules,
+		Datacenters: datacenters,
+	}
+	err := c.untilSucceeds(fmt.Sprintf("creating %s policy", policyTmpl.Name),
+		func() error {
+			return c.createOrUpdateACLPolicy(policyTmpl, consulClient)
+		})
+	if err != nil {
+		return err
+	}
+
+	// Create token for the policy if the secret did not exist previously.
+	tokenTmpl := api.ACLToken{
+		Description: fmt.Sprintf("%s Token", policyTmpl.Name),
+		Policies:    []*api.ACLTokenPolicyLink{{Name: policyTmpl.Name}},
+		Local:       true,
+	}
+	var token string
+	err = c.untilSucceeds(fmt.Sprintf("creating token for policy %s", policyTmpl.Name),
+		func() error {
+			createdToken, _, err := consulClient.ACL().TokenCreate(&tokenTmpl, &api.WriteOptions{})
+			if err == nil {
+				token = createdToken.SecretID
+			}
+			return err
+		})
+	if err != nil {
+		return err
+	}
+
+	// Write the policy and role
+	clientPolicy := `
+path "consul/data/acls/injector-token" {
+  capabilities = ["read"]
+}`
+	c.log.Error("Creating policy")
+	err = c.vaultClient.Sys().PutPolicy("consul-connect-injector-acl", clientPolicy)
+	if err != nil {
+		c.log.Error("========= 1 %v", err)
+		return err
+	}
+
+	params := map[string]interface{}{
+		"bound_service_account_names":      c.withPrefix("connect-injector"),
+		"bound_service_account_namespaces": "default",
+		"policies":                         "connect-ca,consul-connect-injector-acl",
+		"ttl":                              "24h",
+	}
+	_, err = c.vaultClient.Logical().Write("auth/kubernetes/role/consul-connect-injector", params)
+	if err != nil {
+		c.log.Error("========= 2 %v", err)
+		return err
+	}
+
+	params = map[string]interface{}{
+		"data": map[string]interface{}{
+			"token": token,
+		},
+	}
+	// Now write the ACL token to the vault secret
+	_, err = c.vaultClient.Logical().Write("consul/data/acls/injector-token", params)
+	if err != nil {
+		c.log.Error("========= 3 %v", err)
+		return err
+	}
+
+	return err
+}
+
 // createGlobalACL creates a global policy and acl token. The policy is valid
 // for all datacenters and the token is global. dc must be passed because the
 // policy name may have the datacenter name appended.
