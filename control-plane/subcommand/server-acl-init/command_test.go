@@ -2211,13 +2211,13 @@ func TestRun_PoliciesAndBindingRulesACLLogin_SecondaryDatacenter(t *testing.T) {
 			Roles:            []string{resourcePrefix + "-controller-acl-role-" + secondaryDatacenter},
 			GlobalAuthMethod: true,
 		},
-		//{
-		//	TestName:         "Connect Inject",
-		//	TokenFlags:       []string{"-connect-inject"},
-		//	PolicyNames:      []string{"connect-inject-policy-" + secondaryDatacenter},
-		//	Roles:            []string{resourcePrefix + "-connect-injector-acl-role-" + secondaryDatacenter},
-		//	GlobalAuthMethod: false,
-		//},
+		{
+			TestName:         "Connect Inject",
+			TokenFlags:       []string{"-connect-inject"},
+			PolicyNames:      []string{"connect-inject-policy-" + secondaryDatacenter},
+			Roles:            []string{resourcePrefix + "-connect-injector-acl-role-" + secondaryDatacenter},
+			GlobalAuthMethod: false,
+		},
 		//{
 		//	TestName:         "Sync Catalog",
 		//	TokenFlags:       []string{"-sync-catalog"},
@@ -2452,13 +2452,13 @@ func TestRun_ValidateLoginToken_SecondaryDatacenter(t *testing.T) {
 			GlobalAuthMethod: true,
 			GlobalToken:      true,
 		},
-		//{
-		//	ComponentName:    "connect-injector",
-		//	TokenFlags:       []string{"-connect-inject"},
-		//	Roles:            []string{resourcePrefix + "-connect-injector-acl-role-dc2"},
-		//	GlobalAuthMethod: false,
-		//	GlobalToken:      false,
-		//},
+		{
+			ComponentName:    "connect-injector",
+			TokenFlags:       []string{"-connect-inject"},
+			Roles:            []string{resourcePrefix + "-connect-injector-acl-role-dc2"},
+			GlobalAuthMethod: false,
+			GlobalToken:      false,
+		},
 		//{
 		//	ComponentName:    "sync-catalog",
 		//	TokenFlags:       []string{"-sync-catalog"},
