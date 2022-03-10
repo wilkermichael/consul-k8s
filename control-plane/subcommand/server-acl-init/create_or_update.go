@@ -23,12 +23,10 @@ func (c *Command) createACLPolicyRoleAndBindingRule(componentName, rules, dc, pr
 		policyName += fmt.Sprintf("-%s", dc)
 	}
 	var datacenters []string
-	if global {
+	if !global && dc != "" {
 		datacenters = append(datacenters, dc)
-		if !primary {
-			datacenters = append(datacenters, primaryDC)
-		}
 	}
+
 	policyTmpl := api.ACLPolicy{
 		Name:        policyName,
 		Description: fmt.Sprintf("%s Token Policy", policyName),

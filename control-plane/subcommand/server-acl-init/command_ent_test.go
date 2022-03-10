@@ -284,7 +284,7 @@ func TestRun_ACLPolicyUpdates(t *testing.T) {
 				"-server-port=" + strings.Split(testAgent.HTTPAddr, ":")[1],
 				"-resource-prefix=" + resourcePrefix,
 				"-k8s-namespace", k8sNamespaceFlag,
-				"-create-client-token",
+				"-client",
 				"-allow-dns",
 				"-mesh-gateway",
 				"-sync-catalog",
@@ -324,7 +324,7 @@ func TestRun_ACLPolicyUpdates(t *testing.T) {
 			// Check that the expected policies were created.
 			firstRunExpectedPolicies := []string{
 				"anonymous-token-policy",
-				"client-token",
+				"client-policy",
 				"sync-catalog-policy",
 				"mesh-gateway-policy",
 				"snapshot-agent-policy",
@@ -375,7 +375,7 @@ func TestRun_ACLPolicyUpdates(t *testing.T) {
 			// Check that the policies have all been updated.
 			secondRunExpectedPolicies := []string{
 				"anonymous-token-policy",
-				"client-token",
+				"client-policy",
 				"sync-catalog-policy",
 				"connect-inject-policy",
 				"mesh-gateway-policy",
@@ -669,7 +669,7 @@ func TestRun_TokensWithNamespacesEnabled(t *testing.T) {
 		LocalToken  bool
 	}{
 		"client token": {
-			TokenFlags:  []string{"-create-client-token"},
+			TokenFlags:  []string{"-client"},
 			PolicyNames: []string{"client-token"},
 			PolicyDCs:   []string{"dc1"},
 			SecretNames: []string{resourcePrefix + "-client-acl-token"},
