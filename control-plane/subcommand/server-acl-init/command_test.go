@@ -2232,13 +2232,13 @@ func TestRun_PoliciesAndBindingRulesACLLogin_SecondaryDatacenter(t *testing.T) {
 			Roles:            []string{resourcePrefix + "-api-gateway-controller-acl-role-" + secondaryDatacenter},
 			GlobalAuthMethod: false,
 		},
-		//{
-		//	TestName:         "Snapshot Agent",
-		//	TokenFlags:       []string{"-snapshot-agent"},
-		//	PolicyNames:      []string{"snapshot-agent-policy-" + secondaryDatacenter},
-		//	Roles:            []string{resourcePrefix + "-snapshot-agent-acl-role-" + secondaryDatacenter},
-		//	GlobalAuthMethod: false,
-		//},
+		{
+			TestName:         "Snapshot Agent",
+			TokenFlags:       []string{"-snapshot-agent"},
+			PolicyNames:      []string{"snapshot-agent-policy-" + secondaryDatacenter},
+			Roles:            []string{resourcePrefix + "-snapshot-agent-acl-role-" + secondaryDatacenter},
+			GlobalAuthMethod: false,
+		},
 		//{
 		//	TestName:         "Mesh Gateway",
 		//	TokenFlags:       []string{"-mesh-gateway"},
@@ -2473,13 +2473,13 @@ func TestRun_ValidateLoginToken_SecondaryDatacenter(t *testing.T) {
 			GlobalAuthMethod: false,
 			GlobalToken:      false,
 		},
-		//{
-		//	ComponentName:    "snapshot-agent",
-		//	TokenFlags:       []string{"-snapshot-agent"},
-		//	Roles:            []string{resourcePrefix + "-snapshot-agent-acl-role-dc2"},
-		//	GlobalAuthMethod: false,
-		//	GlobalToken:      false,
-		//},
+		{
+			ComponentName:    "snapshot-agent",
+			TokenFlags:       []string{"-snapshot-agent"},
+			Roles:            []string{resourcePrefix + "-snapshot-agent-acl-role-dc2"},
+			GlobalAuthMethod: false,
+			GlobalToken:      false,
+		},
 		//{
 		//	ComponentName:    "mesh-gateway",
 		//	TokenFlags:       []string{"-mesh-gateway"},
