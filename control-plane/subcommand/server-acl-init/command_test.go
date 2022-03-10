@@ -2218,13 +2218,13 @@ func TestRun_PoliciesAndBindingRulesACLLogin_SecondaryDatacenter(t *testing.T) {
 			Roles:            []string{resourcePrefix + "-connect-injector-acl-role-" + secondaryDatacenter},
 			GlobalAuthMethod: false,
 		},
-		//{
-		//	TestName:         "Sync Catalog",
-		//	TokenFlags:       []string{"-sync-catalog"},
-		//	PolicyNames:      []string{"sync-catalog-policy-" + secondaryDatacenter},
-		//	Roles:            []string{resourcePrefix + "-sync-catalog-acl-role-" + secondaryDatacenter},
-		//	GlobalAuthMethod: false,
-		//},
+		{
+			TestName:         "Sync Catalog",
+			TokenFlags:       []string{"-sync-catalog"},
+			PolicyNames:      []string{"sync-catalog-policy-" + secondaryDatacenter},
+			Roles:            []string{resourcePrefix + "-sync-catalog-acl-role-" + secondaryDatacenter},
+			GlobalAuthMethod: false,
+		},
 		//{
 		//	TestName:         "API Gateway Controller",
 		//	TokenFlags:       []string{"-api-gateway-controller"},
@@ -2459,13 +2459,13 @@ func TestRun_ValidateLoginToken_SecondaryDatacenter(t *testing.T) {
 			GlobalAuthMethod: false,
 			GlobalToken:      false,
 		},
-		//{
-		//	ComponentName:    "sync-catalog",
-		//	TokenFlags:       []string{"-sync-catalog"},
-		//	Roles:            []string{resourcePrefix + "-sync-catalog-acl-role-dc2"},
-		//	GlobalAuthMethod: false,
-		//	GlobalToken:      false,
-		//},
+		{
+			ComponentName:    "sync-catalog",
+			TokenFlags:       []string{"-sync-catalog"},
+			Roles:            []string{resourcePrefix + "-sync-catalog-acl-role-dc2"},
+			GlobalAuthMethod: false,
+			GlobalToken:      false,
+		},
 		//{
 		//	ComponentName:    "api-gateway-controller",
 		//	TokenFlags:       []string{"-api-gateway-controller"},
