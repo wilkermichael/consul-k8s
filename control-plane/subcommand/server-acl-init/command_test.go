@@ -1856,9 +1856,9 @@ func TestRun_ACLReplicationTokenValid(t *testing.T) {
 	// Test that replication was successful.
 	retry.Run(t, func(r *retry.R) {
 		replicationStatus, _, err := secondaryConsulClient.ACL().Replication(nil)
-		require.NoError(t, err)
-		require.True(t, replicationStatus.Enabled)
-		require.Greater(t, replicationStatus.ReplicatedIndex, uint64(0))
+		require.NoError(r, err)
+		require.True(r, replicationStatus.Enabled)
+		require.Greater(r, replicationStatus.ReplicatedIndex, uint64(0))
 	})
 
 	// Test that the client policy was created.
