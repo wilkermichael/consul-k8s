@@ -2255,46 +2255,49 @@ func TestRun_PoliciesAndBindingRulesACLLogin_SecondaryDatacenter(t *testing.T) {
 				datacenter = primaryDatacenter
 			}
 
-			// Check that the Role exists + has correct Policy and is associated with a BindingRule.
-			for i := range c.Roles {
-				// Check that the Policy exists.
-				policy, _, err := consul.ACL().PolicyReadByName(c.PolicyNames[i], nil)
-				require.NoError(t, err)
-				require.NotNil(t, policy)
+			retry.Run(t, func(r *retry.R) {
+				// Check that the Role exists + has correct Policy and is associated with a BindingRule.
+				for i := range c.Roles {
+					// Check that the Policy exists.
+					policy, _, err := consul.ACL().PolicyReadByName(c.PolicyNames[i], nil)
+					require.NoError(r, err)
+					require.NotNil(r, policy)
 
-				// Check that the Role exists.
-				role, _, err := consul.ACL().RoleReadByName(c.Roles[i], nil)
-				require.NoError(t, err)
-				require.NotNil(t, role)
+					// Check that the Role exists.
+					role, _, err := consul.ACL().RoleReadByName(c.Roles[i], nil)
+					require.NoError(r, err)
+					require.NotNil(r, role)
 
-				// Check that the Role references the Policy.
-				found := false
-				for j := range role.Policies {
-					if role.Policies[j].Name == policy.Name {
-						found = true
-						break
+					// Check that the Role references the Policy.
+					found := false
+					for j := range role.Policies {
+						if role.Policies[j].Name == policy.Name {
+							found = true
+							break
+						}
 					}
-				}
-				require.True(t, found)
+					require.True(r, found)
 
-				// Check that there exists a BindingRule that references this Role.
-				authMethodName := fmt.Sprintf("%s-%s", resourcePrefix, componentAuthMethod)
-				if c.GlobalAuthMethod {
-					authMethodName = fmt.Sprintf("%s-%s-%s", resourcePrefix, componentAuthMethod, secondaryDatacenter)
-				}
-				rb, _, err := consul.ACL().BindingRuleList(authMethodName, &api.QueryOptions{Datacenter: datacenter})
-				require.NoError(t, err)
-				require.NotNil(t, rb)
-				found = false
-				for j := range rb {
-					if rb[j].BindName == c.Roles[i] {
-						found = true
-						break
+					// Check that there exists a BindingRule that references this Role.
+					authMethodName := fmt.Sprintf("%s-%s", resourcePrefix, componentAuthMethod)
+					if c.GlobalAuthMethod {
+						authMethodName = fmt.Sprintf("%s-%s-%s", resourcePrefix, componentAuthMethod, secondaryDatacenter)
 					}
+					rb, _, err := consul.ACL().BindingRuleList(authMethodName, &api.QueryOptions{Datacenter: datacenter})
+					require.NoError(r, err)
+					require.NotNil(r, rb)
+					found = false
+					for j := range rb {
+						if rb[j].BindName == c.Roles[i] {
+							found = true
+							break
+						}
+					}
+					require.True(r, found)
 				}
-				require.True(t, found)
-			}
+			})
 		})
+
 	}
 }
 
