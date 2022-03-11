@@ -1427,6 +1427,7 @@ func TestRun_ClientTokensRetry(t *testing.T) {
 		"-k8s-namespace=" + ns,
 		"-server-address=" + serverURL.Hostname(),
 		"-server-port=" + serverURL.Port(),
+		"-client",
 	})
 	require.Equal(t, 0, responseCode, ui.ErrorWriter.String())
 
@@ -1578,22 +1579,6 @@ func TestRun_AlreadyBootstrapped(t *testing.T) {
 				{
 					"PUT",
 					"/v1/acl/auth-method",
-				},
-				{
-					"PUT",
-					"/v1/acl/policy",
-				},
-				{
-					"GET",
-					"/v1/acl/role/name/release-name-consul-client-acl-role",
-				},
-				{
-					"PUT",
-					"/v1/acl/role",
-				},
-				{
-					"PUT",
-					"/v1/acl/binding-rule",
 				},
 			}, consulAPICalls)
 		})

@@ -122,7 +122,7 @@ func (c *Command) init() {
 
 	c.flags.BoolVar(&c.flagAllowDNS, "allow-dns", false,
 		"Toggle for updating the anonymous token to allow DNS queries to work")
-	c.flags.BoolVar(&c.flagClient, "client", true,
+	c.flags.BoolVar(&c.flagClient, "client", false,
 		"Toggle for creating a client agent token. Default is true.")
 
 	c.flags.BoolVar(&c.flagSyncCatalog, "sync-catalog", false,
