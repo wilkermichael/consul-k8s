@@ -2258,12 +2258,12 @@ func TestRun_PoliciesAndBindingRulesACLLogin_SecondaryDatacenter(t *testing.T) {
 			// Check that the Role exists + has correct Policy and is associated with a BindingRule.
 			for i := range c.Roles {
 				// Check that the Policy exists.
-				policy, _, err := consul.ACL().PolicyReadByName(c.PolicyNames[i], &api.QueryOptions{Datacenter: primaryDatacenter})
+				policy, _, err := consul.ACL().PolicyReadByName(c.PolicyNames[i], nil)
 				require.NoError(t, err)
 				require.NotNil(t, policy)
 
 				// Check that the Role exists.
-				role, _, err := consul.ACL().RoleReadByName(c.Roles[i], &api.QueryOptions{Datacenter: datacenter})
+				role, _, err := consul.ACL().RoleReadByName(c.Roles[i], nil)
 				require.NoError(t, err)
 				require.NotNil(t, role)
 
