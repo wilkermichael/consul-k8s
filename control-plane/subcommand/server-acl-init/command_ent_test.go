@@ -668,13 +668,6 @@ func TestRun_TokensWithNamespacesEnabled(t *testing.T) {
 		SecretNames []string
 		LocalToken  bool
 	}{
-		"client token": {
-			TokenFlags:  []string{"-client"},
-			PolicyNames: []string{"client-token"},
-			PolicyDCs:   []string{"dc1"},
-			SecretNames: []string{resourcePrefix + "-client-acl-token"},
-			LocalToken:  true,
-		},
 		"enterprise-license token": {
 			TokenFlags:  []string{"-create-enterprise-license-token"},
 			PolicyNames: []string{"enterprise-license-token"},
