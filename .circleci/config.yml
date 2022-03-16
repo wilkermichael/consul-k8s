@@ -703,7 +703,8 @@ jobs:
       - run: mkdir -p $TEST_RESULTS
 
       - run-acceptance-tests:
-          additional-flags: -kubeconfig="$primary_kubeconfig" -secondary-kubeconfig="$secondary_kubeconfig" -enable-transparent-proxy
+          failfast: true
+          additional-flags: -kubeconfig="$primary_kubeconfig" -secondary-kubeconfig="$secondary_kubeconfig" -enable-transparent-proxy -no-cleanup-on-failure
 
       - store_test_results:
           path: /tmp/test-results
@@ -715,7 +716,6 @@ jobs:
           working_directory: *aks-terraform-path
           command: |
             terraform destroy -auto-approve
-          when: always
 
       - slack/status:
           fail_only: true
@@ -884,6 +884,7 @@ workflows:
           context: consul-ci
           requires:
             - build-distros-amd64
+      - cleanup-azure-resources
       # Run acceptance tests using the docker image built for the control plane
       - acceptance:
           requires:
@@ -891,6 +892,9 @@ workflows:
       - acceptance-tproxy:
           requires:
             - dev-upload-docker
+      - acceptance-aks-1-21:
+          requires:
+          - cleanup-azure-resources
   nightly-acceptance-tests:
     triggers:
       - schedule:
