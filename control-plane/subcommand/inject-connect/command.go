@@ -10,6 +10,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/hashicorp/consul-k8s/control-plane/api/v1alpha1"
 	connectinject "github.com/hashicorp/consul-k8s/control-plane/connect-inject"
 	"github.com/hashicorp/consul-k8s/control-plane/consul"
 	"github.com/hashicorp/consul-k8s/control-plane/subcommand/common"
@@ -17,7 +18,6 @@ import (
 	"github.com/hashicorp/consul/api"
 	"github.com/mitchellh/cli"
 	"go.uber.org/zap/zapcore"
-	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -115,7 +115,7 @@ var (
 
 func init() {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
-	utilruntime.Must(batchv1.AddToScheme(scheme))
+	utilruntime.Must(v1alpha1.AddToScheme(scheme))
 	//+kubebuilder:scaffold:scheme
 }
 
@@ -449,8 +449,16 @@ func (c *Command) Run(args []string) int {
 		return 1
 	}
 
-	mgr.GetWebhookServer().CertDir = c.flagCertDir
+	if err = (&connectinject.PeeringTokenController{
+		Client: mgr.GetClient(),
+		Log:    ctrl.Log.WithName("controller").WithName("peering"),
+		Scheme: mgr.GetScheme(),
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "peering")
+		return 1
+	}
 
+	mgr.GetWebhookServer().CertDir = c.flagCertDir
 	mgr.GetWebhookServer().Register("/mutate",
 		&webhook.Admission{Handler: &connectinject.Handler{
 			Clientset:                     c.clientset,

@@ -33,6 +33,24 @@ rules:
   - get
   - list
   - update
+- apiGroups: ["consul.hashicorp.com"]
+  resources: ["peeringtokens"]
+  verbs:
+    - create
+    - delete
+    - get
+    - list
+    - patch
+    - update
+    - watch
+- apiGroups:
+    - consul.hashicorp.com
+  resources:
+    - peeringtokens/status
+  verbs:
+    - get
+    - patch
+    - update
 {{- if .Values.global.enablePodSecurityPolicies }}
 - apiGroups: ["policy"]
   resources: ["podsecuritypolicies"]
