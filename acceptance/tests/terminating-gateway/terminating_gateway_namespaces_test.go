@@ -71,9 +71,10 @@ func TestTerminatingGatewaySingleNamespace(t *testing.T) {
 			}
 
 			logger.Log(t, "upgrading with terminating gateways enabled")
+			gatewayName := "terminating-gateway"
 			consulCluster.Upgrade(t, map[string]string{
 				"terminatingGateways.enabled":                     "true",
-				"terminatingGateways.gateways[0].name":            "terminating-gateway",
+				"terminatingGateways.gateways[0].name":            gatewayName,
 				"terminatingGateways.gateways[0].replicas":        "1",
 				"terminatingGateways.gateways[0].consulNamespace": testNamespace,
 			})
@@ -101,7 +102,7 @@ func TestTerminatingGatewaySingleNamespace(t *testing.T) {
 			// with service:write permissions to the static-server service
 			// so that it can can request Connect certificates for it.
 			if c.secure {
-				updateTerminatingGatewayRole(t, consulClient, fmt.Sprintf(staticServerPolicyRulesNamespace, testNamespace))
+				updateTerminatingGatewayRole(t, consulClient, fmt.Sprintf(staticServerPolicyRulesNamespace, testNamespace), releaseName, gatewayName)
 			}
 
 			// Create the config entry for the terminating gateway.
@@ -154,6 +155,7 @@ func TestTerminatingGatewayNamespaceMirroring(t *testing.T) {
 
 			// Install the Helm chart without the terminating gateway first
 			// so that we can create the namespace for it.
+			gatewayName := "terminating-gateway"
 			helmValues := map[string]string{
 				"connectInject.enabled":                       "true",
 				"connectInject.consulNamespaces.mirroringK8S": "true",
@@ -163,7 +165,7 @@ func TestTerminatingGatewayNamespaceMirroring(t *testing.T) {
 				"global.tls.enabled":            strconv.FormatBool(c.secure),
 
 				"terminatingGateways.enabled":              "true",
-				"terminatingGateways.gateways[0].name":     "terminating-gateway",
+				"terminatingGateways.gateways[0].name":     gatewayName,
 				"terminatingGateways.gateways[0].replicas": "1",
 			}
 
@@ -209,7 +211,7 @@ func TestTerminatingGatewayNamespaceMirroring(t *testing.T) {
 			// with service:write permissions to the static-server service
 			// so that it can can request Connect certificates for it.
 			if c.secure {
-				updateTerminatingGatewayRole(t, consulClient, fmt.Sprintf(staticServerPolicyRulesNamespace, testNamespace))
+				updateTerminatingGatewayRole(t, consulClient, fmt.Sprintf(staticServerPolicyRulesNamespace, testNamespace), releaseName, gatewayName)
 			}
 
 			// Create the config entry for the terminating gateway

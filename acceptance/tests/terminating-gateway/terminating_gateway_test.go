@@ -3,7 +3,6 @@ package terminatinggateway
 import (
 	"fmt"
 	"strconv"
-	"strings"
 	"testing"
 
 	terratestk8s "github.com/gruntwork-io/terratest/modules/k8s"
@@ -43,10 +42,11 @@ func TestTerminatingGateway(t *testing.T) {
 			ctx := suite.Environment().DefaultContext(t)
 			cfg := suite.Config()
 
+			gatewayName := "terminatin-gateway"
 			helmValues := map[string]string{
 				"connectInject.enabled":                    "true",
 				"terminatingGateways.enabled":              "true",
-				"terminatingGateways.gateways[0].name":     "terminating-gateway",
+				"terminatingGateways.gateways[0].name":     gatewayName,
 				"terminatingGateways.gateways[0].replicas": "1",
 
 				"global.acls.manageSystemACLs": strconv.FormatBool(c.secure),
@@ -73,7 +73,7 @@ func TestTerminatingGateway(t *testing.T) {
 			// with service:write permissions to the static-server service
 			// so that it can can request Connect certificates for it.
 			if c.secure {
-				updateTerminatingGatewayRole(t, consulClient, staticServerPolicyRules)
+				updateTerminatingGatewayRole(t, consulClient, staticServerPolicyRules, releaseName, gatewayName)
 			}
 
 			// Create the config entry for the terminating gateway.
@@ -133,7 +133,7 @@ func registerExternalService(t *testing.T, consulClient *api.Client, namespace s
 	require.NoError(t, err)
 }
 
-func updateTerminatingGatewayRole(t *testing.T, consulClient *api.Client, rules string) {
+func updateTerminatingGatewayRole(t *testing.T, consulClient *api.Client, rules string, releaseName string, gatewayName string) {
 	t.Helper()
 
 	logger.Log(t, "creating a write policy for the static-server")
@@ -143,19 +143,9 @@ func updateTerminatingGatewayRole(t *testing.T, consulClient *api.Client, rules 
 	}, nil)
 	require.NoError(t, err)
 
-	logger.Log(t, "getting the terminating gateway role")
-	roles, _, err := consulClient.ACL().RoleList(nil)
-	require.NoError(t, err)
-	terminatingGatewayRoleID := ""
-	for _, role := range roles {
-		if strings.Contains(role.Name, "terminating-gateway") {
-			terminatingGatewayRoleID = role.ID
-			break
-		}
-	}
-
 	logger.Log(t, "update role with policy")
-	termGwRole, _, err := consulClient.ACL().RoleRead(terminatingGatewayRoleID, nil)
+	roleName := fmt.Sprintf("%s-%s-terminating-gateway-acl-role", releaseName, gatewayName)
+	termGwRole, _, err := consulClient.ACL().RoleReadByName(roleName, &api.QueryOptions{})
 	require.NoError(t, err)
 	termGwRole.Policies = append(termGwRole.Policies, &api.ACLTokenPolicyLink{Name: "static-server-write-policy"})
 	_, _, err = consulClient.ACL().RoleUpdate(termGwRole, nil)
