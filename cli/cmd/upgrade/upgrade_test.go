@@ -6,6 +6,7 @@ import (
 
 	"github.com/hashicorp/consul-k8s/cli/common"
 	"github.com/hashicorp/go-hclog"
+	"github.com/stretchr/testify/require"
 )
 
 // TestValidateFlags tests the validate flags function.
@@ -45,6 +46,13 @@ func TestValidateFlags(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestUpgradeAfterFailedInstall(t *testing.T) {
+	c := getInitializedCommand(t)
+
+	code := c.Run(nil)
+	require.Zero(t, code)
 }
 
 // getInitializedCommand sets up a command struct for tests.

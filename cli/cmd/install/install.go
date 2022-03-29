@@ -16,9 +16,11 @@ import (
 	"github.com/hashicorp/consul-k8s/cli/helm"
 	"helm.sh/helm/v3/pkg/action"
 	"helm.sh/helm/v3/pkg/chart/loader"
+	"helm.sh/helm/v3/pkg/chartutil"
 	helmCLI "helm.sh/helm/v3/pkg/cli"
 	"helm.sh/helm/v3/pkg/cli/values"
 	"helm.sh/helm/v3/pkg/getter"
+	"helm.sh/helm/v3/pkg/kube"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
@@ -57,6 +59,7 @@ type Command struct {
 	*common.BaseCommand
 
 	kubernetes kubernetes.Interface
+	k8sHelmClient kube.Interface
 
 	set *flag.Sets
 
@@ -350,6 +353,8 @@ func (c *Command) Run(args []string) int {
 	// Setup action configuration for Helm Go SDK function calls.
 	actionConfig := new(action.Configuration)
 	actionConfig, err = helm.InitActionConfig(actionConfig, c.flagNamespace, settings, uiLogger)
+	actionConfig.KubeClient = c.k8sHelmClient
+	actionConfig.Capabilities = chartutil.DefaultCapabilities
 	if err != nil {
 		c.UI.Output(err.Error(), terminal.WithErrorStyle())
 		return 1

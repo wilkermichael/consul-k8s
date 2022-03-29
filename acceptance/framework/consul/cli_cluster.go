@@ -168,6 +168,8 @@ func (c *CLICluster) Upgrade(t *testing.T, helmValues map[string]string, args ..
 		c.logger.Logf(t, "command stdout: %s", string(out))
 	}
 
+	require.NoError(t, err)
+
 	k8s.WaitForAllPodsToBeReady(t, c.kubernetesClient, c.namespace, fmt.Sprintf("release=%s", c.releaseName))
 }
 

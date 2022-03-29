@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/consul-k8s/cli/common"
+	testing2 "github.com/hashicorp/consul-k8s/cli/helm/testing"
 	"github.com/hashicorp/go-hclog"
 	"github.com/stretchr/testify/require"
 	v1 "k8s.io/api/core/v1"
@@ -170,4 +171,14 @@ func TestCheckValidEnterprise(t *testing.T) {
 	err = c.checkValidEnterprise(secret2.Name)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "please make sure that the secret exists")
+}
+
+func TestUpgradeAfterFailedInstall(t *testing.T) {
+	c := getInitializedCommand(t)
+	c.kubernetes = fake.NewSimpleClientset()
+	c.k8sHelmClient = testing2.FakeClient{K8sClient:  c.kubernetes}
+
+	args := []string{"-auto-approve"}
+	code := c.Run(args)
+	require.Zero(t, code)
 }
