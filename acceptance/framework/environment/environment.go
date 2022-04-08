@@ -134,6 +134,7 @@ func (k kubernetesContext) KubectlOptions(t *testing.T) *k8s.KubectlOptions {
 			k.options.Namespace = metav1.NamespaceDefault
 		}
 	}
+	fmt.Printf("OPTS: %+v\n", k.options)
 	return k.options
 }
 

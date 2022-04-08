@@ -58,6 +58,7 @@ func CheckForPriorInstallations(t *testing.T, client kubernetes.Interface, optio
 	// release may not be listed by Helm but its pods may still be terminating.
 	retry.RunWith(&retry.Counter{Wait: 1 * time.Second, Count: 60}, t, func(r *retry.R) {
 		pods, err := client.CoreV1().Pods(options.KubectlOptions.Namespace).List(context.Background(), metav1.ListOptions{LabelSelector: labelSelector})
+		fmt.Println("HERE", options.KubectlOptions.Namespace, labelSelector)
 		require.NoError(r, err)
 		if len(pods.Items) > 0 {
 			var podNames []string
