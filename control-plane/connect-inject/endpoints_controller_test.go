@@ -75,6 +75,13 @@ func TestShouldIgnore(t *testing.T) {
 			allowSet:  mapset.NewSetWith("bar"),
 			expected:  true,
 		},
+		{
+			name:      "no name spaces in either list",
+			namespace: "foo",
+			denySet:   mapset.NewSetWith(),
+			allowSet:  mapset.NewSetWith(),
+			expected:  true,
+		},
 	}
 	for _, tt := range cases {
 		t.Run(tt.name, func(t *testing.T) {
