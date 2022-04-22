@@ -4,8 +4,8 @@ on:
 
 env:
   TEST_RESULTS: /tmp/test-results # path to where test results are saved
-  CONSUL_VERSION: 1.11.4 # Consul's OSS version to use in tests
-  CONSUL_ENT_VERSION: 1.11.4+ent # Consul's enterprise version to use in tests
+  CONSUL_VERSION: 1.12.0 # Consul's OSS version to use in tests
+  CONSUL_ENT_VERSION: 1.12.0+ent # Consul's enterprise version to use in tests
   GOTESTSUM_VERSION: 1.6.4 # You cannot use environment variables with workflows. The gotestsum version is hardcoded in the reusable workflows too.
 
 jobs:
@@ -31,7 +31,7 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
-      
+
       - name: Setup go
         uses: actions/setup-go@v2
         with:
@@ -47,8 +47,8 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-go-
 
-      - name: Validate helm gen 
-        working-directory: hack/helm-reference-gen 
+      - name: Validate helm gen
+        working-directory: hack/helm-reference-gen
         run: |
           go run ./... -validate
 
@@ -70,16 +70,16 @@ jobs:
       go-version: ${{ needs.get-go-version.outputs.go-version }}
 
   unit-test-helm-templates:
-    needs: 
+    needs:
       - unit-helm-gen
     runs-on: ubuntu-latest
-    container: 
+    container:
       image: docker.mirror.hashicorp.services/hashicorpdev/consul-helm-test:0.11.0
       options: --user 1001
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
-   
+
       - name: Run Unit Tests
         working-directory: charts/consul
         run:  bats --jobs 4 ./test/unit
@@ -117,7 +117,7 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
-      
+
       - name: Setup go
         uses: actions/setup-go@v2
         with:
@@ -142,8 +142,8 @@ jobs:
       - run:  mkdir -p ${{env.TEST_RESULTS}}
       - run:  echo "$HOME/bin" >> $GITHUB_PATH
 
-      - name: Download consul 
-        working-directory: control-plane 
+      - name: Download consul
+        working-directory: control-plane
         run: |
             mkdir -p $HOME/bin
             wget https://releases.hashicorp.com/consul/${{env.CONSUL_VERSION}}/consul_${{env.CONSUL_VERSION}}_linux_amd64.zip && \
@@ -166,7 +166,7 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
-      
+
       - name: Setup go
         uses: actions/setup-go@v2
         with:
@@ -191,8 +191,8 @@ jobs:
       - run:  mkdir -p ${{env.TEST_RESULTS}}
       - run:  echo "$HOME/bin" >> $GITHUB_PATH
 
-      - name: Download consul 
-        working-directory: control-plane 
+      - name: Download consul
+        working-directory: control-plane
         run: |
             mkdir -p $HOME/bin
             wget https://releases.hashicorp.com/consul/${{env.CONSUL_ENT_VERSION}}/consul_${{env.CONSUL_ENT_VERSION}}_linux_amd64.zip && \
@@ -247,8 +247,8 @@ jobs:
       - get-go-version
     uses: hashicorp/consul-k8s/.github/workflows/reusable-golangci-lint.yml@main
     with:
-      directory:  acceptance 
-      go-version: ${{ needs.get-go-version.outputs.go-version }} 
+      directory:  acceptance
+      go-version: ${{ needs.get-go-version.outputs.go-version }}
 
   unit-acceptance-framework:
     needs: [get-go-version, golangci-lint-acceptance]
@@ -262,14 +262,14 @@ jobs:
       - get-go-version
     uses: hashicorp/consul-k8s/.github/workflows/reusable-golangci-lint.yml@main
     with:
-      directory: cli 
+      directory: cli
       go-version: ${{ needs.get-go-version.outputs.go-version }}
 
   unit-cli:
     needs: [get-go-version, golangci-lint-cli]
     uses: hashicorp/consul-k8s/.github/workflows/reusable-unit.yml@main
     with:
-      directory: cli 
+      directory: cli
       go-version: ${{ needs.get-go-version.outputs.go-version }}
 
 # Disabling for now until we get faster VMs to run acceptance tests. Faster VMs for Github Actions are supposed
@@ -279,7 +279,7 @@ jobs:
 #    needs: build-distros
 #    runs-on: ubuntu-latest
 #
-#    env: 
+#    env:
 #      GITHUB_PULL_REQUEST: ${{github.event.pull_request.number}}
 #      DOCKER_USER: ${{secrets.DOCKER_USER}}
 #      DOCKER_PASS: ${{secrets.DOCKER_PASS}}
@@ -293,7 +293,7 @@ jobs:
 #          name: consul-k8s_linux_amd64.zip
 #          path: control-plane
 #
-#      - name: Docker build 
+#      - name: Docker build
 #        working-directory: control-plane
 #        run: |
 #          unzip consul-k8s_linux_amd64.zip -d ./pkg/bin/linux_amd64
@@ -324,5 +324,3 @@ jobs:
 #      gotestsum-version: 1.6.4
 #    secrets:
 #      CONSUL_ENT_LICENSE: ${{ secrets.CONSUL_ENT_LICENSE }}
-
-
