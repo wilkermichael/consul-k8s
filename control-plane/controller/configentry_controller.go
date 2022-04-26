@@ -117,6 +117,7 @@ func (r *ConfigEntryController) ReconcileEntry(ctx context.Context, crdCtrl Cont
 			entry, _, err := r.ConsulClient.ConfigEntries().Get(configEntry.ConsulKind(), configEntry.ConsulName(), &capi.QueryOptions{
 				Namespace: r.consulNamespace(consulEntry, configEntry.ConsulMirroringNS(), configEntry.ConsulGlobalResource()),
 			})
+			entry.GetModifyIndex()
 
 			// Ignore the error where the config entry isn't found in Consul.
 			// It is indicative of desired state.

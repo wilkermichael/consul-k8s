@@ -450,9 +450,13 @@ func (c *Command) Run(args []string) int {
 	}
 
 	if err = (&connectinject.PeeringTokenController{
-		Client: mgr.GetClient(),
-		Log:    ctrl.Log.WithName("controller").WithName("peering"),
-		Scheme: mgr.GetScheme(),
+		Client:          mgr.GetClient(),
+		ConsulClient:    c.consulClient,
+		ConsulScheme:    consulURL.Scheme,
+		ConsulPort:      consulURL.Port(),
+		ConsulClientCfg: cfg,
+		Log:             ctrl.Log.WithName("controller").WithName("peering"),
+		Scheme:          mgr.GetScheme(),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "peering")
 		return 1
