@@ -187,9 +187,10 @@ func SaveSecret(t *testing.T, vaultClient *vapi.Client, config *SaveVaultSecretC
 func ConfigurePKICertificatesForConnectInjectWebhook(t *testing.T,
 	vaultClient *vapi.Client, consulReleaseName, ns, datacenter string,
 	maxTTL string) string {
-	componentServiceAccountName := fmt.Sprintf("%s-consul-%s", consulReleaseName, "connect-injector")
-	allowedDomains := fmt.Sprintf("%s.consul,%s,%s.%s,%s.%s.svc", datacenter,
-		componentServiceAccountName, componentServiceAccountName, ns, componentServiceAccountName, ns)
+	consulServerDNSName := consulReleaseName + "-consul-server"
+	allowedDomains := fmt.Sprintf("%s.consul,%s,%s.%s,%s.%s.svc",
+		datacenter, consulServerDNSName, consulServerDNSName, ns,
+		consulServerDNSName, ns)
 	params := map[string]interface{}{
 		"allowed_domains":    allowedDomains,
 		"allow_bare_domains": "true",
