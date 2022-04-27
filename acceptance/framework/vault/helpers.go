@@ -218,6 +218,7 @@ path %q {
 	return certificateIssuePath
 }
 
+<<<<<<< HEAD
 // CreateConnectCAPolicyForDatacenter creates the Vault Policy for the connect-ca in a given datacenter.
 func CreateConnectCARootAndIntermediatePKIPolicy(t *testing.T, vaultClient *vapi.Client, policyName, rootPath, intermediatePath string) {
 	// connectCAPolicy allows Consul to bootstrap all certificates for the service mesh in Vault.
@@ -225,6 +226,69 @@ func CreateConnectCARootAndIntermediatePKIPolicy(t *testing.T, vaultClient *vapi
 	connectCAPolicyTemplate := `
 path "/sys/mounts" {
   capabilities = [ "read" ]
+=======
+// ConfigurePKICertificatesForControllerWebhook configures roles in Vault so
+// that controller webhook TLS certificates can be issued by Vault.
+func ConfigurePKICertificatesForControllerWebhook(t *testing.T,
+	vaultClient *vapi.Client, consulReleaseName, ns, datacenter string,
+	maxTTL string) string {
+	componentServiceAccountName := fmt.Sprintf("%s-consul-%s", consulReleaseName, "controller")
+	allowedDomains := fmt.Sprintf("%s.consul,%s,%s.%s,%s.%s.svc", datacenter,
+		componentServiceAccountName, componentServiceAccountName, ns, componentServiceAccountName, ns)
+	params := map[string]interface{}{
+		"allowed_domains":    allowedDomains,
+		"allow_bare_domains": "true",
+		"allow_localhost":    "true",
+		"allow_subdomains":   "true",
+		"generate_lease":     "true",
+		"max_ttl":            maxTTL,
+	}
+
+	pkiRoleName := fmt.Sprintf("controller-webhook-cert-%s", datacenter)
+
+	_, err := vaultClient.Logical().Write(
+		fmt.Sprintf("pki/roles/%s", pkiRoleName), params)
+	require.NoError(t, err)
+
+	certificateIssuePath := fmt.Sprintf("pki/issue/%s", pkiRoleName)
+	serverTLSPolicy := fmt.Sprintf(`
+path %q {
+  capabilities = ["create", "update"]
+}`, certificateIssuePath)
+
+	// Create the server policy.
+	err = vaultClient.Sys().PutPolicy(pkiRoleName, serverTLSPolicy)
+	require.NoError(t, err)
+
+	return certificateIssuePath
+}
+
+// ConfigureACLTokenVaultSecret generates a token secret ID for a given name,
+// stores it in Vault as a secret and configures a policy to access it.
+func ConfigureACLTokenVaultSecret(t *testing.T, vaultClient *vapi.Client, tokenName string) string {
+	// Create the Vault Policy for the token.
+	logger.Logf(t, "Creating %s token policy", tokenName)
+	policyName := fmt.Sprintf("%s-token", tokenName)
+	tokenPolicy := fmt.Sprintf(tokenPolicyTemplate, tokenName)
+	err := vaultClient.Sys().PutPolicy(policyName, tokenPolicy)
+	require.NoError(t, err)
+
+	// Generate the token secret.
+	token, err := uuid.GenerateUUID()
+	require.NoError(t, err)
+
+	// Create the replication token secret.
+	logger.Logf(t, "Creating the %s token secret", tokenName)
+	params := map[string]interface{}{
+		"data": map[string]interface{}{
+			"token": token,
+		},
+	}
+	_, err = vaultClient.Logical().Write(fmt.Sprintf("consul/data/secret/%s", tokenName), params)
+	require.NoError(t, err)
+
+	return token
+>>>>>>> 9b5a11d1 (Adding logic to tests for controller tls cert.  also adding snapshot agent and vault namespaces tests)
 }
 path "/sys/mounts/%s" {
   capabilities = [ "create", "read", "update", "delete", "list" ]
