@@ -19,7 +19,7 @@ import (
 // TestVault_TlsAutoReload installs Vault, bootstraps it with secrets, policies, and Kube Auth Method.
 // It then gets certs for https and rpc on the server. It then waits for the certs to rotate and checks
 // that certs have different expirations.
-func TestVault_TlsAutoReload(t *testing.T) {
+func TestVault_TLSAutoReload(t *testing.T) {
 	cfg := suite.Config()
 	ctx := suite.Environment().DefaultContext(t)
 	ns := ctx.KubectlOptions(t).Namespace
@@ -63,6 +63,13 @@ func TestVault_TlsAutoReload(t *testing.T) {
 	expirationInSeconds := 30
 	certPath := vault.ConfigurePKICertificates(t, vaultClient, consulReleaseName, ns, "dc1", fmt.Sprintf("%ds", expirationInSeconds))
 
+	pathForConnectInjectWebookCerts :=
+		vault.ConfigurePKICertificatesForConnectInjectWebhook(t, vaultClient,
+			consulReleaseName, ns, "dc1", "1h")
+	pathForControllerWebookCerts :=
+		vault.ConfigurePKICertificatesForControllerWebhook(t, vaultClient,
+			consulReleaseName, ns, "dc1", "1h")
+
 	vaultCASecret := vault.CASecretName(vaultReleaseName)
 
 	consulHelmValues := map[string]string{
@@ -75,11 +82,15 @@ func TestVault_TlsAutoReload(t *testing.T) {
 		"connectInject.replicas": "1",
 		"controller.enabled":     "true",
 
-		"global.secretsBackend.vault.enabled":              "true",
-		"global.secretsBackend.vault.consulServerRole":     "server",
-		"global.secretsBackend.vault.consulClientRole":     "client",
-		"global.secretsBackend.vault.consulCARole":         "consul-ca",
-		"global.secretsBackend.vault.manageSystemACLsRole": "server-acl-init",
+		"global.secretsBackend.vault.enabled":                          "true",
+		"global.secretsBackend.vault.consulServerRole":                 "server",
+		"global.secretsBackend.vault.consulClientRole":                 "client",
+		"global.secretsBackend.vault.consulCARole":                     "consul-ca",
+		"global.secretsBackend.vault.consulConnectInjectCARole":        "consul-ca",
+		"global.secretsBackend.vault.consulControllerCARole":           "consul-ca",
+		"global.secretsBackend.vault.manageSystemACLsRole":             "server-acl-init",
+		"global.secretsBackend.vault.connectInject.tlsCert.secretName": pathForConnectInjectWebookCerts,
+		"global.secretsBackend.vault.controller.tlsCert.secretName":    pathForControllerWebookCerts,
 
 		"global.secretsBackend.vault.ca.secretName": vaultCASecret,
 		"global.secretsBackend.vault.ca.secretKey":  "tls.crt",
