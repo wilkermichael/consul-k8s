@@ -120,6 +120,12 @@ func TestVault_Partitions(t *testing.T) {
 	vault.ConfigureConsulCAKubernetesAuthRole(t, vaultClient, ns, "kubernetes-"+secondaryPartition)
 	vault.ConfigurePKICA(t, vaultClient)
 	certPath := vault.ConfigurePKICertificates(t, vaultClient, consulReleaseName, ns, "dc1", "1h")
+	pathForConnectInjectWebookCerts :=
+		vault.ConfigurePKICertificatesForConnectInjectWebhook(t, vaultClient,
+			consulReleaseName, ns, "dc1", "1h")
+	pathForControllerWebookCerts :=
+		vault.ConfigurePKICertificatesForControllerWebhook(t, vaultClient,
+			consulReleaseName, ns, "dc1", "1h")
 
 	vaultCASecretName := vault.CASecretName(vaultReleaseName)
 
@@ -132,10 +138,15 @@ func TestVault_Partitions(t *testing.T) {
 		"connectInject.replicas": "1",
 		"controller.enabled":     "true",
 
-		"global.secretsBackend.vault.enabled":              "true",
-		"global.secretsBackend.vault.consulClientRole":     "client",
-		"global.secretsBackend.vault.consulCARole":         "consul-ca",
-		"global.secretsBackend.vault.manageSystemACLsRole": "server-acl-init",
+		"global.secretsBackend.vault.enabled":                          "true",
+		"global.secretsBackend.vault.consulServerRole":                 "server",
+		"global.secretsBackend.vault.consulClientRole":                 "client",
+		"global.secretsBackend.vault.consulCARole":                     "consul-ca",
+		"global.secretsBackend.vault.consulConnectInjectCARole":        "consul-ca",
+		"global.secretsBackend.vault.consulControllerCARole":           "consul-ca",
+		"global.secretsBackend.vault.manageSystemACLsRole":             "server-acl-init",
+		"global.secretsBackend.vault.connectInject.tlsCert.secretName": pathForConnectInjectWebookCerts,
+		"global.secretsBackend.vault.controller.tlsCert.secretName":    pathForControllerWebookCerts,
 
 		"global.secretsBackend.vault.ca.secretName": vaultCASecretName,
 		"global.secretsBackend.vault.ca.secretKey":  "tls.crt",
