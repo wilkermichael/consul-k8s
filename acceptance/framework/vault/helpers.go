@@ -165,7 +165,7 @@ func ConfigureConsulCAKubernetesAuthRole(t *testing.T, vaultClient *vapi.Client,
 	params := map[string]interface{}{
 		"bound_service_account_names":      "*",
 		"bound_service_account_namespaces": ns,
-		"policies":                         "consul-ca,connect-webhook-cert-dc1,controller-webhook-cert-dc1",
+		"policies":                         "consul-ca,connect-webhook-cert-dc1,controller-webhook-cert-dc1,connect-webhook-cert-dc2,controller-webhook-cert-dc2",
 		"ttl":                              "24h",
 	}
 	_, err := vaultClient.Logical().Write(fmt.Sprintf("auth/%s/role/consul-ca", authPath), params)

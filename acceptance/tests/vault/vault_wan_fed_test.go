@@ -131,6 +131,18 @@ func TestVault_WANFederationViaGateways(t *testing.T) {
 	vault.ConfigurePKICA(t, vaultClient)
 	primaryCertPath := vault.ConfigurePKICertificates(t, vaultClient, consulReleaseName, ns, "dc1", "1h")
 	secondaryCertPath := vault.ConfigurePKICertificates(t, vaultClient, consulReleaseName, ns, "dc2", "1h")
+	pathForConnectInjectWebookCertsPrimary :=
+		vault.ConfigurePKICertificatesForConnectInjectWebhook(t, vaultClient,
+			consulReleaseName, ns, "dc1", "1h")
+	pathForControllerWebookCertsPrimary :=
+		vault.ConfigurePKICertificatesForControllerWebhook(t, vaultClient,
+			consulReleaseName, ns, "dc1", "1h")
+	pathForConnectInjectWebookCertsSecondary :=
+		vault.ConfigurePKICertificatesForConnectInjectWebhook(t, vaultClient,
+			consulReleaseName, ns, "dc2", "1h")
+	pathForControllerWebookCertsSecondary :=
+		vault.ConfigurePKICertificatesForControllerWebhook(t, vaultClient,
+			consulReleaseName, ns, "dc2", "1h")
 
 	bootstrapToken := vault.ConfigureACLTokenVaultSecret(t, vaultClient, "bootstrap")
 	replicationToken := vault.ConfigureACLTokenVaultSecret(t, vaultClient, "replication")
@@ -187,16 +199,20 @@ func TestVault_WANFederationViaGateways(t *testing.T) {
 		"server.extraVolumes[0].load": "false",
 
 		// Vault config.
-		"global.secretsBackend.vault.enabled":                       "true",
-		"global.secretsBackend.vault.consulServerRole":              "server",
-		"global.secretsBackend.vault.consulClientRole":              "client",
-		"global.secretsBackend.vault.consulCARole":                  "consul-ca",
-		"global.secretsBackend.vault.manageSystemACLsRole":          "server-acl-init",
-		"global.secretsBackend.vault.ca.secretName":                 vaultCASecretName,
-		"global.secretsBackend.vault.ca.secretKey":                  "tls.crt",
-		"global.secretsBackend.vault.connectCA.address":             primaryVaultCluster.Address(),
-		"global.secretsBackend.vault.connectCA.rootPKIPath":         "connect_root",
-		"global.secretsBackend.vault.connectCA.intermediatePKIPath": "dc1/connect_inter",
+		"global.secretsBackend.vault.enabled":                          "true",
+		"global.secretsBackend.vault.consulServerRole":                 "server",
+		"global.secretsBackend.vault.consulClientRole":                 "client",
+		"global.secretsBackend.vault.consulCARole":                     "consul-ca",
+		"global.secretsBackend.vault.consulConnectInjectCARole":        "consul-ca",
+		"global.secretsBackend.vault.consulControllerCARole":           "consul-ca",
+		"global.secretsBackend.vault.manageSystemACLsRole":             "server-acl-init",
+		"global.secretsBackend.vault.connectInject.tlsCert.secretName": pathForConnectInjectWebookCertsPrimary,
+		"global.secretsBackend.vault.controller.tlsCert.secretName":    pathForControllerWebookCertsPrimary,
+		"global.secretsBackend.vault.ca.secretName":                    vaultCASecretName,
+		"global.secretsBackend.vault.ca.secretKey":                     "tls.crt",
+		"global.secretsBackend.vault.connectCA.address":                primaryVaultCluster.Address(),
+		"global.secretsBackend.vault.connectCA.rootPKIPath":            "connect_root",
+		"global.secretsBackend.vault.connectCA.intermediatePKIPath":    "dc1/connect_inter",
 	}
 
 	if cfg.EnableEnterprise {
@@ -261,19 +277,23 @@ func TestVault_WANFederationViaGateways(t *testing.T) {
 		"server.extraVolumes[0].load": "false",
 
 		// Vault config.
-		"global.secretsBackend.vault.enabled":                       "true",
-		"global.secretsBackend.vault.consulServerRole":              "server",
-		"global.secretsBackend.vault.consulClientRole":              "client",
-		"global.secretsBackend.vault.consulCARole":                  "consul-ca",
-		"global.secretsBackend.vault.manageSystemACLsRole":          "server-acl-init",
-		"global.secretsBackend.vault.ca.secretName":                 vaultCASecretName,
-		"global.secretsBackend.vault.ca.secretKey":                  "tls.crt",
-		"global.secretsBackend.vault.agentAnnotations":              fmt.Sprintf("vault.hashicorp.com/tls-server-name: %s-vault", vaultReleaseName),
-		"global.secretsBackend.vault.connectCA.address":             externalVaultAddress,
-		"global.secretsBackend.vault.connectCA.authMethodPath":      "kubernetes-dc2",
-		"global.secretsBackend.vault.connectCA.rootPKIPath":         "connect_root",
-		"global.secretsBackend.vault.connectCA.intermediatePKIPath": "dc2/connect_inter",
-		"global.secretsBackend.vault.connectCA.additionalConfig":    fmt.Sprintf(`"{"connect": [{"ca_config": [{"tls_server_name": "%s-vault"}]}]}"`, vaultReleaseName),
+		"global.secretsBackend.vault.enabled":                          "true",
+		"global.secretsBackend.vault.consulServerRole":                 "server",
+		"global.secretsBackend.vault.consulClientRole":                 "client",
+		"global.secretsBackend.vault.consulCARole":                     "consul-ca",
+		"global.secretsBackend.vault.consulConnectInjectCARole":        "consul-ca",
+		"global.secretsBackend.vault.consulControllerCARole":           "consul-ca",
+		"global.secretsBackend.vault.manageSystemACLsRole":             "server-acl-init",
+		"global.secretsBackend.vault.connectInject.tlsCert.secretName": pathForConnectInjectWebookCertsSecondary,
+		"global.secretsBackend.vault.controller.tlsCert.secretName":    pathForControllerWebookCertsSecondary,
+		"global.secretsBackend.vault.ca.secretName":                    vaultCASecretName,
+		"global.secretsBackend.vault.ca.secretKey":                     "tls.crt",
+		"global.secretsBackend.vault.agentAnnotations":                 fmt.Sprintf("vault.hashicorp.com/tls-server-name: %s-vault", vaultReleaseName),
+		"global.secretsBackend.vault.connectCA.address":                externalVaultAddress,
+		"global.secretsBackend.vault.connectCA.authMethodPath":         "kubernetes-dc2",
+		"global.secretsBackend.vault.connectCA.rootPKIPath":            "connect_root",
+		"global.secretsBackend.vault.connectCA.intermediatePKIPath":    "dc2/connect_inter",
+		"global.secretsBackend.vault.connectCA.additionalConfig":       fmt.Sprintf(`"{"connect": [{"ca_config": [{"tls_server_name": "%s-vault"}]}]}"`, vaultReleaseName),
 	}
 
 	if cfg.EnableEnterprise {
