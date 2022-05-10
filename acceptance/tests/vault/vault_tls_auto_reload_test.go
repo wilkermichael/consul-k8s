@@ -20,7 +20,7 @@ import (
 // TestVault_TlsAutoReload installs Vault, bootstraps it with secrets, policies, and Kube Auth Method.
 // It then gets certs for https and rpc on the server. It then waits for the certs to rotate and checks
 // that certs have different expirations.
-func TestVault_TlsAutoReload(t *testing.T) {
+func TestVault_TLSAutoReload(t *testing.T) {
 	cfg := suite.Config()
 	ctx := suite.Environment().DefaultContext(t)
 	ns := ctx.KubectlOptions(t).Namespace
@@ -150,6 +150,13 @@ func TestVault_TlsAutoReload(t *testing.T) {
 		RoleName:            serverPKIConfig.RoleName,
 		PolicyNames:         serverPKIConfig.PolicyName,
 	})
+
+	// pathForConnectInjectWebookCerts :=
+	// 	vault.ConfigurePKICertificatesForConnectInjectWebhook(t, vaultClient,
+	// 		consulReleaseName, ns, "dc1", "1h")
+	// pathForControllerWebookCerts :=
+	// 	vault.ConfigurePKICertificatesForControllerWebhook(t, vaultClient,
+	// 		consulReleaseName, ns, "dc1", "1h")
 
 	vaultCASecret := vault.CASecretName(vaultReleaseName)
 
