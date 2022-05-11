@@ -52,10 +52,6 @@ path "/%s/connect_inter/*" {
   capabilities = [ "create", "read", "update", "delete", "list" ]
 }
 `
-	caPolicy = `
-path "pki/cert/ca" {
-  capabilities = ["read"]
-}`
 
 	snapshotAgentPolicy = `
 path "consul/data/secret/snapshot-agent-config" {
@@ -64,7 +60,7 @@ path "consul/data/secret/snapshot-agent-config" {
 )
 
 // GenerateGossipSecret generates a random 32 byte secret returned as a base64 encoded string.
-func GenerateGossipSecret() (string, error) {
+func generateGossipSecret() (string, error) {
 	// This code was copied from Consul's Keygen command:
 	// https://github.com/hashicorp/consul/blob/d652cc86e3d0322102c2b5e9026c6a60f36c17a5/command/keygen/keygen.go
 
@@ -89,7 +85,7 @@ func ConfigureGossipVaultSecret(t *testing.T, vaultClient *vapi.Client) string {
 	require.NoError(t, err)
 
 	// Generate the gossip secret.
-	gossipKey, err := GenerateGossipSecret()
+	gossipKey, err := generateGossipSecret()
 	require.NoError(t, err)
 
 	// Create the gossip secret.
@@ -158,6 +154,26 @@ func ConfigureKubernetesAuthRole(t *testing.T, vaultClient *vapi.Client, consulR
 	require.NoError(t, err)
 }
 
+// ConfigureKubernetesAuthRole configures a role in Vault for the component for the Kubernetes auth method
+// that will be used by the test Helm chart installation.
+func ConfigureK8SAuthRole(t *testing.T, vaultClient *vapi.Client, serviceAccountName, ns, authPath, roleName, policies string) {
+	// Create the Auth Roles for the component.
+	// Auth roles bind policies to Kubernetes service accounts, which
+	// then enables the Vault agent init container to call 'vault login'
+	// with the Kubernetes auth method to obtain a Vault token.
+	// Please see https://www.vaultproject.io/docs/auth/kubernetes#configuration
+	// for more details.
+	logger.Logf(t, "Creating the %q", serviceAccountName)
+	params := map[string]interface{}{
+		"bound_service_account_names":      serviceAccountName,
+		"bound_service_account_namespaces": ns,
+		"policies":                         policies,
+		"ttl":                              "24h",
+	}
+	_, err := vaultClient.Logical().Write(fmt.Sprintf("auth/%s/role/%s", authPath, roleName), params)
+	require.NoError(t, err)
+}
+
 // ConfigureConsulCAKubernetesAuthRole configures a role in Vault that allows all service accounts
 // within the installation namespace access to the Consul server CA.
 func ConfigureConsulCAKubernetesAuthRole(t *testing.T, vaultClient *vapi.Client, ns, authPath string) {
@@ -165,7 +181,7 @@ func ConfigureConsulCAKubernetesAuthRole(t *testing.T, vaultClient *vapi.Client,
 	params := map[string]interface{}{
 		"bound_service_account_names":      "*",
 		"bound_service_account_namespaces": ns,
-		"policies":                         "consul-ca,connect-webhook-cert-dc1,controller-webhook-cert-dc1,connect-webhook-cert-dc2,controller-webhook-cert-dc2",
+		"policies":                         "consul-ca",
 		"ttl":                              "24h",
 	}
 	_, err := vaultClient.Logical().Write(fmt.Sprintf("auth/%s/role/consul-ca", authPath), params)
@@ -174,17 +190,31 @@ func ConfigureConsulCAKubernetesAuthRole(t *testing.T, vaultClient *vapi.Client,
 
 // ConfigurePKICA generates a CA in Vault.
 func ConfigurePKICA(t *testing.T, vaultClient *vapi.Client) {
+	ConfigurePKI(t, vaultClient, "pki", "consul-ca", "Consul CA")
+}
+
+// ConfigurePKI generates a CA in Vault at a given path with a given policyName.
+func ConfigurePKI(t *testing.T, vaultClient *vapi.Client, baseUrl, policyName, commonName string) {
+	// Mount the PKI Secrets engine at the baseUrl.
+	err := vaultClient.Sys().Mount(baseUrl, &vapi.MountInput{
+		Type:   "pki",
+		Config: vapi.MountConfigInput{},
+	})
+	require.NoError(t, err)
 	// Create root CA to issue Consul server certificates and the `consul-server` PKI role.
 	// See https://learn.hashicorp.com/tutorials/consul/vault-pki-consul-secure-tls.
 	// Generate the root CA.
 	params := map[string]interface{}{
-		"common_name": "Consul CA",
+		"common_name": commonName,
 		"ttl":         "24h",
 	}
-	_, err := vaultClient.Logical().Write("pki/root/generate/internal", params)
+	_, err = vaultClient.Logical().Write(fmt.Sprintf("%s/root/generate/internal", baseUrl), params)
 	require.NoError(t, err)
 
-	err = vaultClient.Sys().PutPolicy("consul-ca", caPolicy)
+	policy := fmt.Sprintf(`path "%s/cert/ca" {
+		capabilities = ["read"]
+	  }`, baseUrl)
+	err = vaultClient.Sys().PutPolicy(policyName, policy)
 	require.NoError(t, err)
 }
 
@@ -192,32 +222,9 @@ func ConfigurePKICA(t *testing.T, vaultClient *vapi.Client) {
 // can be issued by Vault.
 func ConfigurePKICertificates(t *testing.T, vaultClient *vapi.Client, consulReleaseName, ns, datacenter string, maxTTL string) string {
 	consulServerDNSName := consulReleaseName + "-consul-server"
-	allowedDomains := fmt.Sprintf("%s.consul,%s,%s.%s,%s.%s.svc", datacenter, consulServerDNSName, consulServerDNSName, ns, consulServerDNSName, ns)
-	params := map[string]interface{}{
-		"allowed_domains":    allowedDomains,
-		"allow_bare_domains": "true",
-		"allow_localhost":    "true",
-		"allow_subdomains":   "true",
-		"generate_lease":     "true",
-		"max_ttl":            maxTTL,
-	}
-
 	pkiRoleName := fmt.Sprintf("server-cert-%s", datacenter)
+	return ConfigurePKICerts(t, vaultClient, "pki", consulServerDNSName, pkiRoleName, ns, datacenter, maxTTL)
 
-	_, err := vaultClient.Logical().Write(fmt.Sprintf("pki/roles/%s", pkiRoleName), params)
-	require.NoError(t, err)
-
-	certificateIssuePath := fmt.Sprintf("pki/issue/%s", pkiRoleName)
-	serverTLSPolicy := fmt.Sprintf(`
-path %q {
-  capabilities = ["create", "update"]
-}`, certificateIssuePath)
-
-	// Create the server policy.
-	err = vaultClient.Sys().PutPolicy(pkiRoleName, serverTLSPolicy)
-	require.NoError(t, err)
-
-	return certificateIssuePath
 }
 
 // ConfigurePKICertificatesForConnectInjectWebhook configures roles in Vault so
@@ -226,34 +233,8 @@ func ConfigurePKICertificatesForConnectInjectWebhook(t *testing.T,
 	vaultClient *vapi.Client, consulReleaseName, ns, datacenter string,
 	maxTTL string) string {
 	componentServiceAccountName := fmt.Sprintf("%s-consul-%s", consulReleaseName, "connect-injector")
-	allowedDomains := fmt.Sprintf("%s.consul,%s,%s.%s,%s.%s.svc", datacenter,
-		componentServiceAccountName, componentServiceAccountName, ns, componentServiceAccountName, ns)
-	params := map[string]interface{}{
-		"allowed_domains":    allowedDomains,
-		"allow_bare_domains": "true",
-		"allow_localhost":    "true",
-		"allow_subdomains":   "true",
-		"generate_lease":     "true",
-		"max_ttl":            maxTTL,
-	}
-
 	pkiRoleName := fmt.Sprintf("connect-webhook-cert-%s", datacenter)
-
-	_, err := vaultClient.Logical().Write(
-		fmt.Sprintf("pki/roles/%s", pkiRoleName), params)
-	require.NoError(t, err)
-
-	certificateIssuePath := fmt.Sprintf("pki/issue/%s", pkiRoleName)
-	serverTLSPolicy := fmt.Sprintf(`
-path %q {
-  capabilities = ["create", "update"]
-}`, certificateIssuePath)
-
-	// Create the server policy.
-	err = vaultClient.Sys().PutPolicy(pkiRoleName, serverTLSPolicy)
-	require.NoError(t, err)
-
-	return certificateIssuePath
+	return ConfigurePKICerts(t, vaultClient, "pki", componentServiceAccountName, pkiRoleName, ns, datacenter, maxTTL)
 }
 
 // ConfigurePKICertificatesForControllerWebhook configures roles in Vault so
@@ -262,6 +243,15 @@ func ConfigurePKICertificatesForControllerWebhook(t *testing.T,
 	vaultClient *vapi.Client, consulReleaseName, ns, datacenter string,
 	maxTTL string) string {
 	componentServiceAccountName := fmt.Sprintf("%s-consul-%s", consulReleaseName, "controller-webhook")
+	pkiRoleName := fmt.Sprintf("controller-webhook-cert-%s", datacenter)
+	return ConfigurePKICerts(t, vaultClient, "pki", componentServiceAccountName, pkiRoleName, ns, datacenter, maxTTL)
+}
+
+// ConfigurePKICerts configures roles in Vault so
+// that controller webhook TLS certificates can be issued by Vault.
+func ConfigurePKICerts(t *testing.T,
+	vaultClient *vapi.Client, baseUrl, componentServiceAccountName, roleName, ns, datacenter,
+	maxTTL string) string {
 	allowedDomains := fmt.Sprintf("%s.consul,%s,%s.%s,%s.%s.svc", datacenter,
 		componentServiceAccountName, componentServiceAccountName, ns, componentServiceAccountName, ns)
 	params := map[string]interface{}{
@@ -273,20 +263,18 @@ func ConfigurePKICertificatesForControllerWebhook(t *testing.T,
 		"max_ttl":            maxTTL,
 	}
 
-	pkiRoleName := fmt.Sprintf("controller-webhook-cert-%s", datacenter)
-
 	_, err := vaultClient.Logical().Write(
-		fmt.Sprintf("pki/roles/%s", pkiRoleName), params)
+		fmt.Sprintf("%s/roles/%s", baseUrl, roleName), params)
 	require.NoError(t, err)
 
-	certificateIssuePath := fmt.Sprintf("pki/issue/%s", pkiRoleName)
-	serverTLSPolicy := fmt.Sprintf(`
-path %q {
-  capabilities = ["create", "update"]
-}`, certificateIssuePath)
+	certificateIssuePath := fmt.Sprintf("%s/issue/%s", baseUrl, roleName)
+	policy := fmt.Sprintf(`
+		path %q {
+		capabilities = ["create", "update"]
+		}`, certificateIssuePath)
 
 	// Create the server policy.
-	err = vaultClient.Sys().PutPolicy(pkiRoleName, serverTLSPolicy)
+	err = vaultClient.Sys().PutPolicy(roleName, policy)
 	require.NoError(t, err)
 
 	return certificateIssuePath

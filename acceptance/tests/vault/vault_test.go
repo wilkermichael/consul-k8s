@@ -51,14 +51,31 @@ func TestVault(t *testing.T) {
 	vault.ConfigureKubernetesAuthRole(t, vaultClient, consulReleaseName, ns, "kubernetes", "server-acl-init", "bootstrap-token")
 	vault.ConfigureConsulCAKubernetesAuthRole(t, vaultClient, ns, "kubernetes")
 
-	vault.ConfigurePKICA(t, vaultClient)
+	//Configure Server PKI
+	baseUrlCA := "pki"
+	tlsCertPath := fmt.Sprintf("%s/cert/ca", baseUrlCA)
+	caRole := "consul-ca"
+	vault.ConfigurePKI(t, vaultClient, baseUrlCA, caRole, "Consul CA")
 	certPath := vault.ConfigurePKICertificates(t, vaultClient, consulReleaseName, ns, "dc1", "1h")
-	pathForConnectInjectWebookCerts :=
-		vault.ConfigurePKICertificatesForConnectInjectWebhook(t, vaultClient,
-			consulReleaseName, ns, "dc1", "1h")
-	pathForControllerWebookCerts :=
-		vault.ConfigurePKICertificatesForControllerWebhook(t, vaultClient,
-			consulReleaseName, ns, "dc1", "1h")
+
+	// Configure Controller Webhooks PKI
+	controllerComponentName := "controller-webhook"
+	controllerServiceAccountName := fmt.Sprintf("%s-consul-%s", consulReleaseName, controllerComponentName)
+	baseUrlController := "controller"
+	controllerPolicy := "controller-webhook-dc1-policy"
+	controllerRole := "controller-webhook-dc1-role"
+	vault.ConfigurePKI(t, vaultClient, baseUrlController, controllerPolicy, "Consul Controller Webhook Certs CA")
+	pathForControllerWebookCerts := vault.ConfigurePKICerts(t, vaultClient, baseUrlController, controllerServiceAccountName, controllerPolicy, ns, "dc1", "1h")
+	vault.ConfigureK8SAuthRole(t, vaultClient, controllerServiceAccountName, ns, "kubernetes", controllerRole, controllerPolicy)
+
+	// Configure Controller Webhooks PKI
+	connectServiceAccountName := fmt.Sprintf("%s-consul-%s", consulReleaseName, "connect-injector")
+	baseUrlConnect := "connect"
+	connectPolicy := "connect-webhook-dc1-policy"
+	connectRole := "connect-webhook-dc1-policy"
+	vault.ConfigurePKI(t, vaultClient, baseUrlConnect, connectPolicy, "Consul Connect Webhook Certs CA")
+	pathForConnectInjectWebookCerts := vault.ConfigurePKICerts(t, vaultClient, baseUrlConnect, connectServiceAccountName, connectPolicy, ns, "dc1", "1h")
+	vault.ConfigureK8SAuthRole(t, vaultClient, connectServiceAccountName, ns, "kubernetes", connectRole, connectPolicy)
 
 	vaultCASecret := vault.CASecretName(vaultReleaseName)
 
@@ -74,9 +91,9 @@ func TestVault(t *testing.T) {
 		"global.secretsBackend.vault.enabled":                          "true",
 		"global.secretsBackend.vault.consulServerRole":                 "server",
 		"global.secretsBackend.vault.consulClientRole":                 "client",
-		"global.secretsBackend.vault.consulCARole":                     "consul-ca",
-		"global.secretsBackend.vault.consulConnectInjectCARole":        "consul-ca",
-		"global.secretsBackend.vault.consulControllerCARole":           "consul-ca",
+		"global.secretsBackend.vault.consulCARole":                     caRole,
+		"global.secretsBackend.vault.consulConnectInjectCARole":        connectRole,
+		"global.secretsBackend.vault.consulControllerCARole":           controllerRole,
 		"global.secretsBackend.vault.manageSystemACLsRole":             "server-acl-init",
 		"global.secretsBackend.vault.connectInject.tlsCert.secretName": pathForConnectInjectWebookCerts,
 		"global.secretsBackend.vault.controller.tlsCert.secretName":    pathForControllerWebookCerts,
@@ -101,7 +118,7 @@ func TestVault(t *testing.T) {
 		"terminatingGateways.defaults.replicas": "1",
 
 		"server.serverCert.secretName": certPath,
-		"global.tls.caCert.secretName": "pki/cert/ca",
+		"global.tls.caCert.secretName": tlsCertPath,
 		"global.tls.enableAutoEncrypt": "true",
 
 		// For sync catalog, it is sufficient to check that the deployment is running and ready
