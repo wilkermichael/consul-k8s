@@ -45,40 +45,40 @@ func TestVault(t *testing.T) {
 
 	//Configure Server PKI
 	serverPKIConfig := &vault.PKIAndAuthRoleConfiguration{
-		BaseURL:            "pki",
-		PolicyName:         "consul-ca-policy",
-		RoleName:           "consul-ca-role",
-		VaultNamespace:     ns,
-		DataCenter:         "dc1",
-		ServiceAccountName: fmt.Sprintf("%s-consul-%s", consulReleaseName, "server"),
-		MaxTTL:             "1h",
-		AuthMethodPath:     "kubernetes",
+		BaseURL:             "pki",
+		PolicyName:          "consul-ca-policy",
+		RoleName:            "consul-ca-role",
+		KubernetesNamespace: ns,
+		DataCenter:          "dc1",
+		ServiceAccountName:  fmt.Sprintf("%s-consul-%s", consulReleaseName, "server"),
+		MaxTTL:              "1h",
+		AuthMethodPath:      "kubernetes",
 	}
 	vault.ConfigurePKIAndAuthRole(t, vaultClient, serverPKIConfig)
 
 	// Configure Controller Webhooks PKI
 	controllerPKIConfig := &vault.PKIAndAuthRoleConfiguration{
-		BaseURL:            "controller",
-		PolicyName:         "controller-webhook-dc1-policy",
-		RoleName:           "controller-webhook-dc1-role",
-		VaultNamespace:     ns,
-		DataCenter:         "dc1",
-		ServiceAccountName: fmt.Sprintf("%s-consul-%s", consulReleaseName, "controller"),
-		MaxTTL:             "1h",
-		AuthMethodPath:     "kubernetes",
+		BaseURL:             "controller",
+		PolicyName:          "controller-webhook-dc1-policy",
+		RoleName:            "controller-webhook-dc1-role",
+		KubernetesNamespace: ns,
+		DataCenter:          "dc1",
+		ServiceAccountName:  fmt.Sprintf("%s-consul-%s", consulReleaseName, "controller"),
+		MaxTTL:              "1h",
+		AuthMethodPath:      "kubernetes",
 	}
 	vault.ConfigurePKIAndAuthRole(t, vaultClient, controllerPKIConfig)
 
 	// Configure Controller Webhooks PKI
 	connectInjectPKIConfig := &vault.PKIAndAuthRoleConfiguration{
-		BaseURL:            "connect",
-		PolicyName:         "connect-webhook-dc1-policy",
-		RoleName:           "connect-webhook-dc1-role",
-		VaultNamespace:     ns,
-		DataCenter:         "dc1",
-		ServiceAccountName: fmt.Sprintf("%s-consul-%s", consulReleaseName, "connect-injector"),
-		MaxTTL:             "1h",
-		AuthMethodPath:     "kubernetes",
+		BaseURL:             "connect",
+		PolicyName:          "connect-webhook-dc1-policy",
+		RoleName:            "connect-webhook-dc1-role",
+		KubernetesNamespace: ns,
+		DataCenter:          "dc1",
+		ServiceAccountName:  fmt.Sprintf("%s-consul-%s", consulReleaseName, "connect-injector"),
+		MaxTTL:              "1h",
+		AuthMethodPath:      "kubernetes",
 	}
 	vault.ConfigurePKIAndAuthRole(t, vaultClient, connectInjectPKIConfig)
 
@@ -88,44 +88,84 @@ func TestVault(t *testing.T) {
 	//Gossip key
 	gossipKey, err := vault.GenerateGossipSecret()
 	require.NoError(t, err)
-	gossipSecretPath := "consul/data/secret/gossip"
-	gossipSecretKey := "gossip"
-	gossipSecretPolicyName := "gossip"
-	vault.SaveVaultSecret(t, vaultClient, gossipSecretPath, gossipSecretKey, gossipKey, gossipSecretPolicyName)
+	gossipSecret := &vault.SaveVaultSecretConfiguration{
+		Path:       "consul/data/secret/gossip",
+		Key:        "gossip",
+		Value:      gossipKey,
+		PolicyName: "gossip",
+	}
+	vault.SaveSecret(t, vaultClient, gossipSecret)
 
 	//License
-	license := cfg.EnterpriseLicense
-	licenseSecretPath := "consul/data/secret/license"
-	licenseSecretKey := "license"
-	licenseSecretPolicyName := "license"
+	licenseSecret := &vault.SaveVaultSecretConfiguration{
+		Path:       "consul/data/secret/license",
+		Key:        "license",
+		Value:      cfg.EnterpriseLicense,
+		PolicyName: "license",
+	}
 	if cfg.EnableEnterprise {
-		vault.SaveVaultSecret(t, vaultClient, licenseSecretPath, licenseSecretKey, license, licenseSecretPolicyName)
-
+		vault.SaveSecret(t, vaultClient, licenseSecret)
 	}
 
 	//Bootstrap Token
 	bootstrapToken, err := uuid.GenerateUUID()
 	require.NoError(t, err)
-	bootstrapTokenSecretPath := "consul/data/secret/bootstrap"
-	bootstrapTokenSecretKey := "token"
-	bootstrapTokenPolicyName := "bootstrap-token"
-	vault.SaveVaultSecret(t, vaultClient, bootstrapTokenSecretPath, bootstrapTokenSecretKey, bootstrapToken, bootstrapTokenPolicyName)
+	bootstrapTokenSecret := &vault.SaveVaultSecretConfiguration{
+		Path:       "consul/data/secret/bootstrap",
+		Key:        "token",
+		Value:      bootstrapToken,
+		PolicyName: "bootstrap",
+	}
+	vault.SaveSecret(t, vaultClient, bootstrapTokenSecret)
 
 	// -------------------------
 	// Additional Auth Roles
 	// -------------------------
-	serverPolicies := fmt.Sprintf("%s,%s,%s,%s", gossipSecretPolicyName, connectCAPolicy, serverPKIConfig.PolicyName, bootstrapTokenPolicyName)
+	serverPolicies := fmt.Sprintf("%s,%s,%s,%s", gossipSecret.PolicyName, connectCAPolicy, serverPKIConfig.PolicyName, bootstrapTokenSecret.PolicyName)
 	if cfg.EnableEnterprise {
-		serverPolicies += fmt.Sprintf(",%s", licenseSecretPolicyName)
+		serverPolicies += fmt.Sprintf(",%s", licenseSecret.PolicyName)
 	}
+
+	//server
 	consulServerRole := "server"
-	vault.ConfigureK8SAuthRole(t, vaultClient, serverPKIConfig.ServiceAccountName, ns, "kubernetes", consulServerRole, serverPolicies)
+	vault.ConfigureK8SAuthRole(t, vaultClient, &vault.KubernetesAuthRoleConfiguration{
+		ServiceAccountName:  serverPKIConfig.ServiceAccountName,
+		KubernetesNamespace: ns,
+		AuthMethodPath:      "kubernetes",
+		RoleName:            consulServerRole,
+		PolicyNames:         serverPolicies,
+	})
+
+	//client
 	consulClientRole := "client"
 	consulClientServiceAccountName := fmt.Sprintf("%s-consul-%s", consulReleaseName, "client")
-	vault.ConfigureK8SAuthRole(t, vaultClient, consulClientServiceAccountName, ns, "kubernetes", consulClientRole, gossipSecretPolicyName)
+	vault.ConfigureK8SAuthRole(t, vaultClient, &vault.KubernetesAuthRoleConfiguration{
+		ServiceAccountName:  consulClientServiceAccountName,
+		KubernetesNamespace: ns,
+		AuthMethodPath:      "kubernetes",
+		RoleName:            consulClientRole,
+		PolicyNames:         gossipSecret.PolicyName,
+	})
+
+	//manageSystemACLs
 	manageSystemACLsRole := "server-acl-init"
 	manageSystemACLsServiceAccountName := fmt.Sprintf("%s-consul-%s", consulReleaseName, "server-acl-init")
-	vault.ConfigureK8SAuthRole(t, vaultClient, manageSystemACLsServiceAccountName, ns, "kubernetes", manageSystemACLsRole, bootstrapTokenPolicyName)
+	vault.ConfigureK8SAuthRole(t, vaultClient, &vault.KubernetesAuthRoleConfiguration{
+		ServiceAccountName:  manageSystemACLsServiceAccountName,
+		KubernetesNamespace: ns,
+		AuthMethodPath:      "kubernetes",
+		RoleName:            manageSystemACLsRole,
+		PolicyNames:         bootstrapTokenSecret.PolicyName,
+	})
+
+	// allow all components to access server ca
+	vault.ConfigureK8SAuthRole(t, vaultClient, &vault.KubernetesAuthRoleConfiguration{
+		ServiceAccountName:  "*",
+		KubernetesNamespace: ns,
+		AuthMethodPath:      "kubernetes",
+		RoleName:            serverPKIConfig.RoleName,
+		PolicyNames:         serverPKIConfig.PolicyName,
+	})
 
 	vaultCASecret := vault.CASecretName(vaultReleaseName)
 
@@ -156,11 +196,11 @@ func TestVault(t *testing.T) {
 		"global.secretsBackend.vault.connectCA.intermediatePKIPath": connectCAIntermediatePath,
 
 		"global.acls.manageSystemACLs":          "true",
-		"global.acls.bootstrapToken.secretName": bootstrapTokenSecretPath,
-		"global.acls.bootstrapToken.secretKey":  bootstrapTokenSecretKey,
+		"global.acls.bootstrapToken.secretName": bootstrapTokenSecret.Path,
+		"global.acls.bootstrapToken.secretKey":  bootstrapTokenSecret.Key,
 		"global.tls.enabled":                    "true",
-		"global.gossipEncryption.secretName":    gossipSecretPath,
-		"global.gossipEncryption.secretKey":     gossipSecretKey,
+		"global.gossipEncryption.secretName":    gossipSecret.Path,
+		"global.gossipEncryption.secretKey":     gossipSecret.Key,
 
 		"ingressGateways.enabled":               "true",
 		"ingressGateways.defaults.replicas":     "1",
@@ -181,8 +221,8 @@ func TestVault(t *testing.T) {
 	}
 
 	if cfg.EnableEnterprise {
-		consulHelmValues["global.enterpriseLicense.secretName"] = licenseSecretPath
-		consulHelmValues["global.enterpriseLicense.secretKey"] = licenseSecretKey
+		consulHelmValues["global.enterpriseLicense.secretName"] = licenseSecret.Path
+		consulHelmValues["global.enterpriseLicense.secretKey"] = licenseSecret.Key
 	}
 
 	logger.Log(t, "Installing Consul")

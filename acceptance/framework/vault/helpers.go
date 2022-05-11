@@ -101,27 +101,6 @@ func ConfigureGossipVaultSecret(t *testing.T, vaultClient *vapi.Client) string {
 	return gossipKey
 }
 
-func SaveVaultSecret(t *testing.T, vaultClient *vapi.Client, path, key, value, policyName string) {
-	policy := fmt.Sprintf(`
-	path "%s" {
-	  capabilities = ["read"]
-	}`, path)
-	// Create the Vault Policy for the gossip key.
-	logger.Log(t, "Creating policy")
-	err := vaultClient.Sys().PutPolicy(policyName, policy)
-	require.NoError(t, err)
-
-	// Create the gossip secret.
-	logger.Log(t, "Creating the gossip secret")
-	params := map[string]interface{}{
-		"data": map[string]interface{}{
-			key: value,
-		},
-	}
-	_, err = vaultClient.Logical().Write(path, params)
-	require.NoError(t, err)
-}
-
 // ConfigureEnterpriseLicenseVaultSecret stores it in Vault as a secret and configures a policy to access it.
 func ConfigureEnterpriseLicenseVaultSecret(t *testing.T, vaultClient *vapi.Client, cfg *config.TestConfig) {
 	// Create the enterprise license secret.
@@ -172,26 +151,6 @@ func ConfigureKubernetesAuthRole(t *testing.T, vaultClient *vapi.Client, consulR
 		"ttl":                              "24h",
 	}
 	_, err := vaultClient.Logical().Write(fmt.Sprintf("auth/%s/role/%s", authPath, component), params)
-	require.NoError(t, err)
-}
-
-// ConfigureKubernetesAuthRole configures a role in Vault for the component for the Kubernetes auth method
-// that will be used by the test Helm chart installation.
-func ConfigureK8SAuthRole(t *testing.T, vaultClient *vapi.Client, serviceAccountName, ns, authPath, roleName, policies string) {
-	// Create the Auth Roles for the component.
-	// Auth roles bind policies to Kubernetes service accounts, which
-	// then enables the Vault agent init container to call 'vault login'
-	// with the Kubernetes auth method to obtain a Vault token.
-	// Please see https://www.vaultproject.io/docs/auth/kubernetes#configuration
-	// for more details.
-	logger.Logf(t, "Creating the %q", serviceAccountName)
-	params := map[string]interface{}{
-		"bound_service_account_names":      serviceAccountName,
-		"bound_service_account_namespaces": ns,
-		"policies":                         policies,
-		"ttl":                              "24h",
-	}
-	_, err := vaultClient.Logical().Write(fmt.Sprintf("auth/%s/role/%s", authPath, roleName), params)
 	require.NoError(t, err)
 }
 
@@ -367,18 +326,46 @@ path "/%s/*" {
 	require.NoError(t, err)
 }
 
+type KubernetesAuthRoleConfiguration struct {
+	ServiceAccountName  string
+	KubernetesNamespace string
+	PolicyNames         string
+	AuthMethodPath      string
+	RoleName            string
+}
+
+// ConfigureKubernetesAuthRole configures a role in Vault for the component for the Kubernetes auth method
+// that will be used by the test Helm chart installation.
+func ConfigureK8SAuthRole(t *testing.T, vaultClient *vapi.Client, config *KubernetesAuthRoleConfiguration) {
+	// Create the Auth Roles for the component.
+	// Auth roles bind policies to Kubernetes service accounts, which
+	// then enables the Vault agent init container to call 'vault login'
+	// with the Kubernetes auth method to obtain a Vault token.
+	// Please see https://www.vaultproject.io/docs/auth/kubernetes#configuration
+	// for more details.
+	logger.Logf(t, "Creating the %q", config.ServiceAccountName)
+	params := map[string]interface{}{
+		"bound_service_account_names":      config.ServiceAccountName,
+		"bound_service_account_namespaces": config.KubernetesNamespace,
+		"policies":                         config.PolicyNames,
+		"ttl":                              "24h",
+	}
+	_, err := vaultClient.Logical().Write(fmt.Sprintf("auth/%s/role/%s", config.AuthMethodPath, config.RoleName), params)
+	require.NoError(t, err)
+}
+
 type PKIAndAuthRoleConfiguration struct {
-	ServiceAccountName string
-	BaseURL            string
-	PolicyName         string
-	RoleName           string
-	CommonName         string
-	CAPath             string
-	CertPath           string
-	VaultNamespace     string
-	DataCenter         string
-	MaxTTL             string
-	AuthMethodPath     string
+	ServiceAccountName  string
+	BaseURL             string
+	PolicyName          string
+	RoleName            string
+	CommonName          string
+	CAPath              string
+	CertPath            string
+	KubernetesNamespace string
+	DataCenter          string
+	MaxTTL              string
+	AuthMethodPath      string
 }
 
 func ConfigurePKIAndAuthRole(t *testing.T, vaultClient *vapi.Client, config *PKIAndAuthRoleConfiguration) {
@@ -389,11 +376,44 @@ func ConfigurePKIAndAuthRole(t *testing.T, vaultClient *vapi.Client, config *PKI
 	// Configure role with create and update access to issue certs at
 	// <baseURL>/issue/<roleName>
 	config.CertPath = ConfigurePKICerts(t, vaultClient, config.BaseURL,
-		config.ServiceAccountName, config.PolicyName, config.VaultNamespace,
+		config.ServiceAccountName, config.PolicyName, config.KubernetesNamespace,
 		config.DataCenter, config.MaxTTL)
 	// Configure AuthMethodRole that will map the service account name
 	// to the Vault role
-	ConfigureK8SAuthRole(t, vaultClient, config.ServiceAccountName,
-		config.VaultNamespace, config.AuthMethodPath, config.RoleName,
-		config.PolicyName)
+	authMethodRoleConfig := &KubernetesAuthRoleConfiguration{
+		ServiceAccountName:  config.ServiceAccountName,
+		KubernetesNamespace: config.KubernetesNamespace,
+		AuthMethodPath:      config.AuthMethodPath,
+		RoleName:            config.RoleName,
+		PolicyNames:         config.PolicyName,
+	}
+	ConfigureK8SAuthRole(t, vaultClient, authMethodRoleConfig)
+}
+
+type SaveVaultSecretConfiguration struct {
+	Path       string
+	Key        string
+	PolicyName string
+	Value      string
+}
+
+func SaveSecret(t *testing.T, vaultClient *vapi.Client, config *SaveVaultSecretConfiguration) {
+	policy := fmt.Sprintf(`
+	path "%s" {
+	  capabilities = ["read"]
+	}`, config.Path)
+	// Create the Vault Policy for the gossip key.
+	logger.Log(t, "Creating policy")
+	err := vaultClient.Sys().PutPolicy(config.PolicyName, policy)
+	require.NoError(t, err)
+
+	// Create the gossip secret.
+	logger.Log(t, "Creating the gossip secret")
+	params := map[string]interface{}{
+		"data": map[string]interface{}{
+			config.Key: config.Value,
+		},
+	}
+	_, err = vaultClient.Logical().Write(config.Path, params)
+	require.NoError(t, err)
 }
