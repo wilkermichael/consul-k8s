@@ -186,6 +186,7 @@ func TestVault(t *testing.T) {
 		"global.secretsBackend.vault.consulControllerCARole":           controllerPKIConfig.RoleName,
 		"global.secretsBackend.vault.manageSystemACLsRole":             manageSystemACLsRole,
 		"global.secretsBackend.vault.connectInject.tlsCert.secretName": connectInjectPKIConfig.CertPath,
+		"global.secretsBackend.vault.connectInject.caCert.secretName":  connectInjectPKIConfig.CAPath,
 		"global.secretsBackend.vault.controller.tlsCert.secretName":    controllerPKIConfig.CertPath,
 
 		"global.secretsBackend.vault.ca.secretName": vaultCASecret,
