@@ -60,7 +60,7 @@ path "consul/data/secret/snapshot-agent-config" {
 )
 
 // GenerateGossipSecret generates a random 32 byte secret returned as a base64 encoded string.
-func generateGossipSecret() (string, error) {
+func GenerateGossipSecret() (string, error) {
 	// This code was copied from Consul's Keygen command:
 	// https://github.com/hashicorp/consul/blob/d652cc86e3d0322102c2b5e9026c6a60f36c17a5/command/keygen/keygen.go
 
@@ -85,7 +85,7 @@ func ConfigureGossipVaultSecret(t *testing.T, vaultClient *vapi.Client) string {
 	require.NoError(t, err)
 
 	// Generate the gossip secret.
-	gossipKey, err := generateGossipSecret()
+	gossipKey, err := GenerateGossipSecret()
 	require.NoError(t, err)
 
 	// Create the gossip secret.
@@ -99,6 +99,27 @@ func ConfigureGossipVaultSecret(t *testing.T, vaultClient *vapi.Client) string {
 	require.NoError(t, err)
 
 	return gossipKey
+}
+
+func SaveVaultSecret(t *testing.T, vaultClient *vapi.Client, path, key, value, policyName string) {
+	policy := fmt.Sprintf(`
+	path "%s" {
+	  capabilities = ["read"]
+	}`, path)
+	// Create the Vault Policy for the gossip key.
+	logger.Log(t, "Creating policy")
+	err := vaultClient.Sys().PutPolicy(policyName, policy)
+	require.NoError(t, err)
+
+	// Create the gossip secret.
+	logger.Log(t, "Creating the gossip secret")
+	params := map[string]interface{}{
+		"data": map[string]interface{}{
+			key: value,
+		},
+	}
+	_, err = vaultClient.Logical().Write(path, params)
+	require.NoError(t, err)
 }
 
 // ConfigureEnterpriseLicenseVaultSecret stores it in Vault as a secret and configures a policy to access it.
@@ -313,4 +334,66 @@ func CreateConnectCAPolicy(t *testing.T, vaultClient *vapi.Client, datacenter st
 		fmt.Sprintf("connect-ca-%s", datacenter),
 		fmt.Sprintf(connectCAPolicyTemplate, datacenter, datacenter))
 	require.NoError(t, err)
+}
+
+// CreateConnectCAPolicyForDatacenter creates the Vault Policy for the connect-ca in a given datacenter.
+func CreateConnectCARootAndIntermediatePIKPolicy(t *testing.T, vaultClient *vapi.Client, policyName, rootPath, intermediatePath string) {
+	// connectCAPolicy allows Consul to bootstrap all certificates for the service mesh in Vault.
+	// Adapted from https://www.consul.io/docs/connect/ca/vault#consul-managed-pki-paths.
+	connectCAPolicyTemplate := `
+path "/sys/mounts" {
+  capabilities = [ "read" ]
+}
+
+path "/sys/mounts/%s" {
+  capabilities = [ "create", "read", "update", "delete", "list" ]
+}
+
+path "/sys/mounts/%s" {
+  capabilities = [ "create", "read", "update", "delete", "list" ]
+}
+
+path "/%s/*" {
+  capabilities = [ "create", "read", "update", "delete", "list" ]
+}
+
+path "/%s/*" {
+  capabilities = [ "create", "read", "update", "delete", "list" ]
+}
+`
+	err := vaultClient.Sys().PutPolicy(
+		policyName,
+		fmt.Sprintf(connectCAPolicyTemplate, rootPath, intermediatePath, rootPath, intermediatePath))
+	require.NoError(t, err)
+}
+
+type PKIAndAuthRoleConfiguration struct {
+	ServiceAccountName string
+	BaseURL            string
+	PolicyName         string
+	RoleName           string
+	CommonName         string
+	CAPath             string
+	CertPath           string
+	VaultNamespace     string
+	DataCenter         string
+	MaxTTL             string
+	AuthMethodPath     string
+}
+
+func ConfigurePKIAndAuthRole(t *testing.T, vaultClient *vapi.Client, config *PKIAndAuthRoleConfiguration) {
+	config.CAPath = fmt.Sprintf("%s/cert/ca", config.BaseURL)
+	// Configure role with read access to <baseURL>/cert/ca
+	ConfigurePKI(t, vaultClient, config.BaseURL, config.PolicyName,
+		config.CommonName)
+	// Configure role with create and update access to issue certs at
+	// <baseURL>/issue/<roleName>
+	config.CertPath = ConfigurePKICerts(t, vaultClient, config.BaseURL,
+		config.ServiceAccountName, config.PolicyName, config.VaultNamespace,
+		config.DataCenter, config.MaxTTL)
+	// Configure AuthMethodRole that will map the service account name
+	// to the Vault role
+	ConfigureK8SAuthRole(t, vaultClient, config.ServiceAccountName,
+		config.VaultNamespace, config.AuthMethodPath, config.RoleName,
+		config.PolicyName)
 }
