@@ -70,7 +70,7 @@ as well as the global.name setting.
 
 {{- define "consul.controllerWebhookTLSCertTemplate" -}}
  |
-            {{ "{{" }}- with secret "{{ .Values.global.secretsBackend.vault.controller.tlsCert.secretName }}" "{{ printf "common_name=controller.%s.%s" .Values.global.datacenter .Values.global.domain }}"
+            {{ "{{" }}- with secret "{{ .Values.global.secretsBackend.vault.controller.tlsCert.secretName }}" "{{ printf "common_name=controller-webhook.%s.%s" .Values.global.datacenter .Values.global.domain }}"
             "alt_names={{ include "consul.controllerWebhookTLSAltNames" . }}" "ip_sans=127.0.0.1" -{{ "}}" }}
             {{ "{{" }}- .Data.certificate -{{ "}}" }}
             {{ "{{" }}- end -{{ "}}" }}
@@ -78,7 +78,7 @@ as well as the global.name setting.
 
 {{- define "consul.controllerWebhookTLSKeyTemplate" -}}
  |
-            {{ "{{" }}- with secret "{{ .Values.global.secretsBackend.vault.controller.tlsCert.secretName }}" "{{ printf "common_name=controller.%s.%s" .Values.global.datacenter .Values.global.domain }}"
+            {{ "{{" }}- with secret "{{ .Values.global.secretsBackend.vault.controller.tlsCert.secretName }}" "{{ printf "common_name=controller-webhook.%s.%s" .Values.global.datacenter .Values.global.domain }}"
             "alt_names={{ include "consul.controllerWebhookTLSAltNames" . }}" "ip_sans=127.0.0.1" -{{ "}}" }}
             {{ "{{" }}- .Data.private_key -{{ "}}" }}
             {{ "{{" }}- end -{{ "}}" }}
@@ -107,7 +107,7 @@ as well as the global.name setting.
 {{- define "consul.controllerWebhookTLSAltNames" -}}
 {{- $name := include "consul.fullname" . -}}
 {{- $ns := .Release.Namespace -}}
-{{ printf "localhost,%s-controller,*.%s-controller,*.%s-controller.%s,%s-controller.%s,*.%s-controller.%s.svc,%s-controller.%s.svc,*.controller.%s.%s" $name $name $name $ns $name $ns $name $ns $name $ns (.Values.global.datacenter ) (.Values.global.domain) }}
+{{ printf "localhost,%s-controller-webhook,*.%s-controller-webhook,*.%s-controller-webhook.%s,%s-controller-webhook.%s,*.%s-controller-webhook.%s.svc,%s-controller-webhook.%s.svc,*.controller-webhook.%s.%s" $name $name $name $ns $name $ns $name $ns $name $ns (.Values.global.datacenter ) (.Values.global.domain) }}
 {{- end -}}
 
 {{- define "consul.vaultReplicationTokenTemplate" -}}

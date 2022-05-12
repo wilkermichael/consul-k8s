@@ -265,9 +265,15 @@ global:
 
       controller:
         # The directory that Kubernetes will use on Kubernetes CRD creation, 
-        # deletion, and update, to get TLS certificates used issued from vault
+        # deletion, and update, to get TLS certificates issued from vault
         # to send webhooks to the controller.
         tlsCert:
+          # @type: string
+          secretName: nil
+        # The directory that Kubernetes will use on Kubernetes CRD creation, 
+        # deletion, and update, to get CA bundle issued from vault
+        # to validate webhooks sent to ConnectInject
+        caCert: 
           # @type: string
           secretName: nil
       
@@ -277,15 +283,15 @@ global:
       consulControllerCARole: ""
       
       connectInject:
-        # The directory that Kubernetes will use on Kubernetes CRD creation, 
-        # deletion, and update, to get TLS certificates used issued from vault
+        # The directory that Kubernetes will use on Kubernetes service creation, 
+        # deletion, and update, to get TLS certificates issued from vault
         # to send webhooks to ConnectInject
         tlsCert: 
           # @type: string
           secretName: nil
-        # The directory that Kubernetes will use on Kubernetes CRD creation, 
-        # deletion, and update, to get TLS certificates used issued from vault
-        # to send webhooks to ConnectInject
+        # The directory that Kubernetes will use on Kubernetes service creation, 
+        # deletion, and update, to get CA bundle issued from vault
+        # to validate webhooks sent to ConnectInject
         caCert: 
           # @type: string
           secretName: nil

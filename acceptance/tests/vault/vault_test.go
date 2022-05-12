@@ -51,6 +51,7 @@ func TestVault(t *testing.T) {
 		KubernetesNamespace: ns,
 		DataCenter:          "dc1",
 		ServiceAccountName:  fmt.Sprintf("%s-consul-%s", consulReleaseName, "server"),
+		AllowedSubdomain:    fmt.Sprintf("%s-consul-%s", consulReleaseName, "server"),
 		MaxTTL:              "1h",
 		AuthMethodPath:      "kubernetes",
 	}
@@ -64,6 +65,7 @@ func TestVault(t *testing.T) {
 		KubernetesNamespace: ns,
 		DataCenter:          "dc1",
 		ServiceAccountName:  fmt.Sprintf("%s-consul-%s", consulReleaseName, "controller"),
+		AllowedSubdomain:    fmt.Sprintf("%s-consul-%s", consulReleaseName, "controller-webhook"),
 		MaxTTL:              "1h",
 		AuthMethodPath:      "kubernetes",
 	}
@@ -77,6 +79,7 @@ func TestVault(t *testing.T) {
 		KubernetesNamespace: ns,
 		DataCenter:          "dc1",
 		ServiceAccountName:  fmt.Sprintf("%s-consul-%s", consulReleaseName, "connect-injector"),
+		AllowedSubdomain:    fmt.Sprintf("%s-consul-%s", consulReleaseName, "connect-injector"),
 		MaxTTL:              "1h",
 		AuthMethodPath:      "kubernetes",
 	}
@@ -188,6 +191,7 @@ func TestVault(t *testing.T) {
 		"global.secretsBackend.vault.connectInject.tlsCert.secretName": connectInjectPKIConfig.CertPath,
 		"global.secretsBackend.vault.connectInject.caCert.secretName":  connectInjectPKIConfig.CAPath,
 		"global.secretsBackend.vault.controller.tlsCert.secretName":    controllerPKIConfig.CertPath,
+		"global.secretsBackend.vault.controller.caCert.secretName":     controllerPKIConfig.CAPath,
 
 		"global.secretsBackend.vault.ca.secretName": vaultCASecret,
 		"global.secretsBackend.vault.ca.secretKey":  "tls.crt",

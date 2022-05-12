@@ -230,10 +230,10 @@ func ConfigurePKICertificatesForControllerWebhook(t *testing.T,
 // ConfigurePKICerts configures roles in Vault so
 // that controller webhook TLS certificates can be issued by Vault.
 func ConfigurePKICerts(t *testing.T,
-	vaultClient *vapi.Client, baseUrl, componentServiceAccountName, roleName, ns, datacenter,
+	vaultClient *vapi.Client, baseUrl, allowedSubdomain, roleName, ns, datacenter,
 	maxTTL string) string {
 	allowedDomains := fmt.Sprintf("%s.consul,%s,%s.%s,%s.%s.svc", datacenter,
-		componentServiceAccountName, componentServiceAccountName, ns, componentServiceAccountName, ns)
+		allowedSubdomain, allowedSubdomain, ns, allowedSubdomain, ns)
 	params := map[string]interface{}{
 		"allowed_domains":    allowedDomains,
 		"allow_bare_domains": "true",
@@ -366,6 +366,7 @@ type PKIAndAuthRoleConfiguration struct {
 	DataCenter          string
 	MaxTTL              string
 	AuthMethodPath      string
+	AllowedSubdomain    string
 }
 
 func ConfigurePKIAndAuthRole(t *testing.T, vaultClient *vapi.Client, config *PKIAndAuthRoleConfiguration) {
@@ -376,7 +377,7 @@ func ConfigurePKIAndAuthRole(t *testing.T, vaultClient *vapi.Client, config *PKI
 	// Configure role with create and update access to issue certs at
 	// <baseURL>/issue/<roleName>
 	config.CertPath = ConfigurePKICerts(t, vaultClient, config.BaseURL,
-		config.ServiceAccountName, config.PolicyName, config.KubernetesNamespace,
+		config.AllowedSubdomain, config.PolicyName, config.KubernetesNamespace,
 		config.DataCenter, config.MaxTTL)
 	// Configure AuthMethodRole that will map the service account name
 	// to the Vault role
