@@ -737,7 +737,7 @@ func TestRun_ConnectInjectAuthMethodUpdates(t *testing.T) {
 	require.Equal(t, authMethod.Config["ServiceAccountJWT"], jwtToken)
 
 	// Generate a new CA certificate
-	_, _, caCertPem, _, err := cert.GenerateCA("kubernetes")
+	_, _, caCertPem, _, err := cert.GenerateRootCA("kubernetes")
 	require.NoError(t, err)
 
 	// Overwrite the default kubernetes api, service account token and CA cert

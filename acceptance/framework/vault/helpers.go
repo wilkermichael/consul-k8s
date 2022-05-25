@@ -210,3 +210,24 @@ path "/%s/*" {
 			rootPath, intermediatePath, rootPath, intermediatePath))
 	require.NoError(t, err)
 }
+
+// CreateConnectIntermediatePKIPolicy creates the Vault Policy for the connect-ca in a given datacenter.
+func CreateConnectIntermediatePKIPolicy(t *testing.T, vaultClient *vapi.Client, policyName, intermediatePath string) {
+	// connectCAPolicy allows Consul to bootstrap all certificates for the service mesh in Vault.
+	// Adapted from https://www.consul.io/docs/connect/ca/vault#consul-managed-pki-paths.
+	err := vaultClient.Sys().PutPolicy(
+		policyName,
+		fmt.Sprintf(`
+path "/sys/mounts" {
+  capabilities = [ "read" ]
+}
+path "/sys/mounts/%s" {
+  capabilities = [ "create", "read", "update", "delete", "list" ]
+}
+path "/%s/*" {
+  capabilities = [ "create", "read", "update", "delete", "list" ]
+}
+`,
+			intermediatePath, intermediatePath))
+	require.NoError(t, err)
+}

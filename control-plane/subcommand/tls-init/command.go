@@ -125,7 +125,7 @@ func (c *Command) Run(args []string) int {
 	// Only create a CA certificate/key pair if it doesn't exist or hasn't been provided
 	if !c.caExists() {
 		c.log.Info("no existing CA found; generating new CA certificate and key")
-		_, pk, ca, _, err = cert.GenerateCA("Consul Agent CA")
+		_, pk, ca, _, err = cert.GenerateRootCA("Consul Agent CA")
 		if err != nil {
 			c.log.Error("error generating Consul Agent CA certificate and private key", "err", err)
 			return 1

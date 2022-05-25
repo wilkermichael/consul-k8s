@@ -42,7 +42,7 @@ func (s *GenSource) Certificate(ctx context.Context, last *Bundle) (Bundle, erro
 
 	// If we have no CA, generate it for the first time.
 	if len(s.caCert) == 0 {
-		if err := s.generateCA(); err != nil {
+		if err := s.GenerateRootCA(); err != nil {
 			return result, err
 		}
 	}
@@ -102,9 +102,9 @@ func (s *GenSource) expiryWithin() time.Duration {
 	return time.Duration(float64(s.expiry()) * 0.10)
 }
 
-func (s *GenSource) generateCA() error {
+func (s *GenSource) GenerateRootCA() error {
 	// generate the CA
-	signer, _, caCertPem, caCertTemplate, err := GenerateCA(s.Name + " CA")
+	signer, _, caCertPem, caCertTemplate, err := GenerateRootCA(s.Name + " CA")
 	if err != nil {
 		return err
 	}

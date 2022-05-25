@@ -9,12 +9,12 @@ import (
 	"github.com/gruntwork-io/terratest/modules/helm"
 	terratestk8s "github.com/gruntwork-io/terratest/modules/k8s"
 	terratestLogger "github.com/gruntwork-io/terratest/modules/logger"
+	"github.com/hashicorp/consul-k8s/acceptance/framework/cert"
 	"github.com/hashicorp/consul-k8s/acceptance/framework/config"
 	"github.com/hashicorp/consul-k8s/acceptance/framework/environment"
 	"github.com/hashicorp/consul-k8s/acceptance/framework/helpers"
 	"github.com/hashicorp/consul-k8s/acceptance/framework/k8s"
 	"github.com/hashicorp/consul-k8s/acceptance/framework/logger"
-	"github.com/hashicorp/consul-k8s/control-plane/helper/cert"
 	"github.com/hashicorp/consul/sdk/testutil/retry"
 	vapi "github.com/hashicorp/vault/api"
 	"github.com/stretchr/testify/require"
@@ -300,7 +300,9 @@ func (v *VaultCluster) createTLSCerts(t *testing.T) {
 	namespace := v.helmOptions.KubectlOptions.Namespace
 
 	// Generate CA and cert and create secrets for them.
-	signer, _, caPem, caCertTmpl, err := cert.GenerateCA("Vault CA")
+	// signer, _, caPem, caCertTmpl, err := cert.GenerateRootCA("Vault CA")
+	rootSigner, _, _, rootCACertTemplate, err := cert.GenerateRootCA("Vault CA Root")
+	_, _, caPem, caCertTmpl, err := cert.GenerateIntermediateCA("Vault CA", rootCACertTemplate, rootSigner)
 	require.NoError(t, err)
 	vaultService := fmt.Sprintf("%s-vault", v.releaseName)
 	certSANs := []string{
@@ -308,7 +310,7 @@ func (v *VaultCluster) createTLSCerts(t *testing.T) {
 		fmt.Sprintf("%s.default", vaultService),
 		fmt.Sprintf("%s.default.svc", vaultService),
 	}
-	certPem, keyPem, err := cert.GenerateCert("Vault server", 24*time.Hour, caCertTmpl, signer, certSANs)
+	certPem, keyPem, err := cert.GenerateCert("Vault server", 24*time.Hour, caCertTmpl, rootSigner, certSANs)
 	require.NoError(t, err)
 
 	t.Cleanup(func() {

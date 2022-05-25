@@ -257,7 +257,7 @@ func TestRun_GetsOnlyActiveRoot(t *testing.T) {
 	require.NoError(t, err)
 
 	// generate a new CA
-	ca, key := generateCA(t)
+	ca, key := GenerateRootCA(t)
 
 	// set it as an active CA in Consul,
 	// which will make Consul return both CAs -
@@ -377,12 +377,12 @@ func TestRun_WithProvider(t *testing.T) {
 	require.Equal(t, expectedCARoot, string(actualCARoot))
 }
 
-// generateCA generates Consul CA
+// GenerateRootCA generates Consul CA
 // and returns cert and key as pem strings.
-func generateCA(t *testing.T) (caPem, keyPem string) {
+func GenerateRootCA(t *testing.T) (caPem, keyPem string) {
 	require := require.New(t)
 
-	_, keyPem, caPem, _, err := cert.GenerateCA("Consul Agent CA - Test")
+	_, keyPem, caPem, _, err := cert.GenerateRootCA("Consul Agent CA - Test")
 	require.NoError(err)
 
 	return

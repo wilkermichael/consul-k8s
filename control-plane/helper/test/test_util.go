@@ -36,7 +36,7 @@ func GenerateServerCerts(t *testing.T) (string, string, string) {
 	require.NoError(err)
 
 	// Generate CA
-	signer, _, caCertPem, caCertTemplate, err := cert.GenerateCA("Consul Agent CA - Test")
+	signer, _, caCertPem, caCertTemplate, err := cert.GenerateRootCA("Consul Agent CA - Test")
 	require.NoError(err)
 
 	// Generate Server Cert
