@@ -174,11 +174,7 @@ func (c *Command) meshGatewayRules() (string, error) {
 	// Mesh gateways can only act as a proxy for services
 	// that its ACL token has access to. So, in the case of
 	// Consul namespaces, it needs access to all namespaces.
-	meshGatewayRulesTpl := `
-  agent_prefix "" {
-  	policy = "read"
-  }
-{{- if .EnableNamespaces }}
+	meshGatewayRulesTpl := `{{- if .EnableNamespaces }}
 namespace "default" {
 {{- end }}
   service "mesh-gateway" {
