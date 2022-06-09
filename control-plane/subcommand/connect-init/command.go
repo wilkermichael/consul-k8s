@@ -179,7 +179,7 @@ func (c *Command) Run(args []string) int {
 					" `consul.hashicorp.com/service-ignore: \"true\"` to all services except the one used by Consul for handling requests.")
 			}
 
-			return fmt.Errorf("did not find correct number of services, found: %d, services: %+v", len(serviceList), serviceList)
+			return fmt.Errorf("did not find correct number of services, found: %d", len(serviceList))
 		}
 		for _, svc := range serviceList {
 			c.logger.Info("Registered service has been detected", "service", svc.Service)
@@ -196,7 +196,21 @@ func (c *Command) Run(args []string) int {
 					return nil
 				}
 			}
+
 			if svc.Kind == api.ServiceKindConnectProxy {
+				// Check if any of the upstreams are in a different datacenter from the proxy's service datacenter.
+				// If they are, we need to check that the mesh gateway mode is set to either local or remote.
+				// Other mesh gateway modes mean that the services will not be able to connect to each other
+				// via the mesh gateway.
+				for _, upstream := range svc.Proxy.Upstreams {
+					if svc.Datacenter != upstream.Datacenter {
+						meshGwMode := svc.Proxy.MeshGateway.Mode
+						if meshGwMode != api.MeshGatewayModeLocal && meshGwMode != api.MeshGatewayModeRemote {
+							return fmt.Errorf("upstream %q is in a different datacenter (%q) but mesh gateway mode is neither %q nor %q",
+								upstream.DestinationName, upstream.Datacenter, api.MeshGatewayModeLocal, api.MeshGatewayModeRemote)
+						}
+					}
+				}
 				// This is the proxy service ID.
 				proxyID = svc.ID
 			}

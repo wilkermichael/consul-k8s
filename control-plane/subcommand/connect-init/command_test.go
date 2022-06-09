@@ -16,6 +16,7 @@ import (
 	"github.com/hashicorp/consul-k8s/control-plane/subcommand/common"
 	"github.com/hashicorp/consul/api"
 	"github.com/hashicorp/consul/sdk/testutil"
+	"github.com/hashicorp/go-hclog"
 	"github.com/mitchellh/cli"
 	"github.com/stretchr/testify/require"
 )
@@ -358,8 +359,10 @@ func TestRun_ServicePollingErrors(t *testing.T) {
 	t.Parallel()
 
 	cases := []struct {
-		name     string
-		services []api.AgentServiceRegistration
+		name        string
+		services    []api.AgentServiceRegistration
+		expError    string
+		configEntry func() api.ConfigEntry
 	}{
 		{
 			name: "only service is registered; proxy service is missing",
@@ -374,6 +377,7 @@ func TestRun_ServicePollingErrors(t *testing.T) {
 					},
 				},
 			},
+			expError: "Timed out waiting for service registration: error=\"did not find correct number of services, found: 1\"",
 		},
 		{
 			name: "only proxy is registered; service is missing",
@@ -394,6 +398,7 @@ func TestRun_ServicePollingErrors(t *testing.T) {
 					},
 				},
 			},
+			expError: "Timed out waiting for service registration: error=\"did not find correct number of services, found: 1\"",
 		},
 		{
 			name: "service and proxy without pod-name and k8s-namespace meta",
@@ -415,6 +420,7 @@ func TestRun_ServicePollingErrors(t *testing.T) {
 					Address: "127.0.0.1",
 				},
 			},
+			expError: "Timed out waiting for service registration: error=\"did not find correct number of services, found: 0\"",
 		},
 		{
 			name: "service and proxy with pod-name meta but without k8s-namespace meta",
@@ -442,6 +448,7 @@ func TestRun_ServicePollingErrors(t *testing.T) {
 					},
 				},
 			},
+			expError: "Timed out waiting for service registration: error=\"did not find correct number of services, found: 0\"",
 		},
 		{
 			name: "service and proxy with k8s-namespace meta but pod-name meta",
@@ -469,6 +476,7 @@ func TestRun_ServicePollingErrors(t *testing.T) {
 					},
 				},
 			},
+			expError: "Timed out waiting for service registration: error=\"did not find correct number of services, found: 0\"",
 		},
 		{
 			name: "both services are non-proxy services",
@@ -492,6 +500,97 @@ func TestRun_ServicePollingErrors(t *testing.T) {
 					},
 				},
 			},
+			expError: "Timed out waiting for service registration: error=\"unable to find registered connect-proxy service\"",
+		},
+		{
+			name: "proxy service has upstream in a different datacenter with mesh gateway mode empty",
+			services: []api.AgentServiceRegistration{
+				{
+					ID:      "counting-counting",
+					Name:    "counting",
+					Address: "127.0.0.1",
+					Meta: map[string]string{
+						metaKeyPodName:         "counting-pod",
+						metaKeyKubeNS:          "default-ns",
+						metaKeyKubeServiceName: "counting",
+					},
+				},
+				{
+					ID:   "counting-counting-sidecar-proxy",
+					Name: "counting-sidecar-proxy",
+					Kind: "connect-proxy",
+					Meta: map[string]string{
+						metaKeyPodName:         "counting-pod",
+						metaKeyKubeNS:          "default-ns",
+						metaKeyKubeServiceName: "counting",
+					},
+					Proxy: &api.AgentServiceConnectProxyConfig{
+						DestinationServiceName: "counting",
+						DestinationServiceID:   "counting-counting",
+						Upstreams: []api.Upstream{
+							{
+								LocalBindPort:   1234,
+								DestinationName: "dashboard",
+								Datacenter:      "dc2",
+							},
+						},
+					},
+					Port:    9999,
+					Address: "127.0.0.1",
+				},
+			},
+			configEntry: func() api.ConfigEntry {
+				ce, _ := api.MakeConfigEntry(api.ProxyDefaults, "pd")
+				pd := ce.(*api.ProxyConfigEntry)
+				pd.MeshGateway.Mode = api.MeshGatewayModeDefault
+				return pd
+			},
+			expError: "Timed out waiting for service registration: error=\"upstream \"dashboard\" is in a different datacenter (\"dc2\") but mesh gateway mode is neither \"local\" nor \"remote\"",
+		},
+		{
+			name: "proxy service has upstream in a different datacenter with mesh gateway mode none",
+			services: []api.AgentServiceRegistration{
+				{
+					ID:      "counting-counting",
+					Name:    "counting",
+					Address: "127.0.0.1",
+					Meta: map[string]string{
+						metaKeyPodName:         "counting-pod",
+						metaKeyKubeNS:          "default-ns",
+						metaKeyKubeServiceName: "counting",
+					},
+				},
+				{
+					ID:   "counting-counting-sidecar-proxy",
+					Name: "counting-sidecar-proxy",
+					Kind: "connect-proxy",
+					Meta: map[string]string{
+						metaKeyPodName:         "counting-pod",
+						metaKeyKubeNS:          "default-ns",
+						metaKeyKubeServiceName: "counting",
+					},
+					Proxy: &api.AgentServiceConnectProxyConfig{
+						DestinationServiceName: "counting",
+						DestinationServiceID:   "counting-counting",
+						Upstreams: []api.Upstream{
+							{
+								LocalBindPort:   1234,
+								DestinationName: "dashboard",
+								Datacenter:      "dc2",
+							},
+						},
+					},
+					Port:    9999,
+					Address: "127.0.0.1",
+				},
+			},
+			configEntry: func() api.ConfigEntry {
+				ce, _ := api.MakeConfigEntry(api.ProxyDefaults, "pd")
+				pd := ce.(*api.ProxyConfigEntry)
+				pd.MeshGateway.Mode = api.MeshGatewayModeNone
+				return pd
+			},
+			expError: "Timed out waiting for service registration: error=\"upstream \"dashboard\" is in a different datacenter (\"dc2\") but mesh gateway mode is neither \"local\" nor \"remote\"",
 		},
 	}
 
@@ -514,11 +613,20 @@ func TestRun_ServicePollingErrors(t *testing.T) {
 			for _, svc := range c.services {
 				require.NoError(t, consulClient.Agent().ServiceRegister(&svc))
 			}
+			if c.configEntry != nil {
+				_, _, err = consulClient.ConfigEntries().Set(c.configEntry(), &api.WriteOptions{})
+				require.NoError(t, err)
+			}
 
 			ui := cli.NewMockUi()
+			testLogger := hclog.New(&hclog.LoggerOptions{
+				Level:  hclog.Info,
+				Output: ui.ErrorWriter,
+			})
 			cmd := Command{
 				UI:                                 ui,
 				serviceRegistrationPollingAttempts: 1,
+				logger:                             testLogger,
 			}
 			flags := []string{
 				"-http-addr", server.HTTPAddr,
@@ -530,6 +638,7 @@ func TestRun_ServicePollingErrors(t *testing.T) {
 
 			code := cmd.Run(flags)
 			require.Equal(t, 1, code)
+			require.Contains(t, ui.ErrorWriter.String(), c.expError)
 		})
 	}
 }

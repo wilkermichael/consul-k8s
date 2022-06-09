@@ -113,12 +113,12 @@ func TestMeshGatewayDefault(t *testing.T) {
 
 	// Create a ProxyDefaults resource to configure services to use the mesh
 	// gateways.
-	logger.Log(t, "creating proxy-defaults config")
-	kustomizeDir := "../fixtures/bases/mesh-gateway"
-	k8s.KubectlApplyK(t, primaryContext.KubectlOptions(t), kustomizeDir)
-	helpers.Cleanup(t, cfg.NoCleanupOnFailure, func() {
-		k8s.KubectlDeleteK(t, primaryContext.KubectlOptions(t), kustomizeDir)
-	})
+	//logger.Log(t, "creating proxy-defaults config")
+	//kustomizeDir := "../fixtures/bases/mesh-gateway"
+	//k8s.KubectlApplyK(t, primaryContext.KubectlOptions(t), kustomizeDir)
+	//helpers.Cleanup(t, cfg.NoCleanupOnFailure, func() {
+	//	k8s.KubectlDeleteK(t, primaryContext.KubectlOptions(t), kustomizeDir)
+	//})
 
 	// Check that we can connect services over the mesh gateways
 	logger.Log(t, "creating static-server in dc2")
