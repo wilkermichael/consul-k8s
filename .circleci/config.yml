@@ -68,7 +68,7 @@ commands:
         type: string
       consul-k8s-image:
         type: string
-        default: "docker.mirror.hashicorp.services/hashicorpdev/consul-k8s-control-plane:$(git rev-parse --short HEAD)"
+        default: "docker.mirror.hashicorp.services/hashicorpdev/consul-k8s-control-plane:latest"
       go-path:
         type: string
         default: "/home/circleci/.go_workspace"
@@ -983,23 +983,17 @@ workflows:
      # The rest of these CircleCI jobs have been migrated to Github Actions. We need to wait until
      # the summer of 2022 for larger puplic Github Action VMs be available before the acceptance tests can
      # be moved
-      - build-distro:
-          OS: "darwin freebsd linux solaris windows"
-          ARCH: "amd64"
-          name: build-distros-amd64
-      - dev-upload-docker:
-          context: consul-ci
-          requires:
-            - build-distros-amd64
+#      - build-distro:
+#          OS: "darwin freebsd linux solaris windows"
+#          ARCH: "amd64"
+#          name: build-distros-amd64
+#      - dev-upload-docker:
+#          context: consul-ci
+#          requires:
+#            - build-distros-amd64
       # Run acceptance tests using the docker image built for the control plane
-      - acceptance:
-          context: consul-ci
-          requires:
-            - dev-upload-docker
-      - acceptance-tproxy:
-          context: consul-ci
-          requires:
-            - dev-upload-docker
+      - acceptance
+      - acceptance-tproxy
   nightly-acceptance-tests:
     triggers:
       - schedule:
