@@ -97,6 +97,7 @@ commands:
                   for pkg in $pkgs
                   do
                     if ! gotestsum --no-summary=all --jsonfile=jsonfile-${pkg////-} -- $pkg -p 1 -timeout 2h -failfast \
+                          -run TestMeshGateway* \
                           << parameters.additional-flags >> \
                           ${ENABLE_ENTERPRISE:+-enable-enterprise} \
                           -enable-multi-cluster \
