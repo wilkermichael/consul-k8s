@@ -73,6 +73,87 @@ func TestFetchConfig(t *testing.T) {
 	require.Equal(t, testEnvoyConfig.Secrets, envoyConfig.Secrets)
 }
 
+func TestClusterFiltering(t *testing.T) {
+	cases := map[string]struct {
+		fqdnFilter string
+		expected   []Cluster
+	}{
+		"No Filter": {
+			fqdnFilter: "",
+			expected: []Cluster{
+				{
+					Name:                     "local_agent",
+					FullyQualifiedDomainName: "local_agent",
+					Endpoints:                []string{"192.168.79.187:8502"},
+					Type:                     "STATIC",
+					LastUpdated:              "2022-05-13T04:22:39.553Z",
+				},
+				{
+					Name:                     "client",
+					FullyQualifiedDomainName: "client.default.dc1.internal.bc3815c2-1a0f-f3ff-a2e9-20d791f08d00.consul",
+					Type:                     "EDS",
+					LastUpdated:              "2022-06-09T00:39:12.948Z",
+				},
+				{
+					Name:                     "frontend",
+					FullyQualifiedDomainName: "frontend.default.dc1.internal.bc3815c2-1a0f-f3ff-a2e9-20d791f08d00.consul",
+					Type:                     "EDS",
+					LastUpdated:              "2022-06-09T00:39:12.855Z",
+				},
+				{
+					Name:                     "local_app",
+					FullyQualifiedDomainName: "local_app",
+					Endpoints:                []string{"127.0.0.1:8080"},
+					Type:                     "STATIC",
+					LastUpdated:              "2022-05-13T04:22:39.655Z",
+				},
+				{
+					Name:                     "original-destination",
+					FullyQualifiedDomainName: "original-destination",
+					Type:                     "ORIGINAL_DST",
+					LastUpdated:              "2022-05-13T04:22:39.743Z",
+				},
+				{
+					Name:                     "server",
+					FullyQualifiedDomainName: "server.default.dc1.internal.bc3815c2-1a0f-f3ff-a2e9-20d791f08d00.consul",
+					Type:                     "EDS",
+					LastUpdated:              "2022-06-09T00:39:12.754Z",
+				},
+			},
+		},
+		"Filter FQDN by default": {
+			fqdnFilter: "default",
+			expected: []Cluster{
+				{
+					Name:                     "client",
+					FullyQualifiedDomainName: "client.default.dc1.internal.bc3815c2-1a0f-f3ff-a2e9-20d791f08d00.consul",
+					Type:                     "EDS",
+					LastUpdated:              "2022-06-09T00:39:12.948Z",
+				},
+				{
+					Name:                     "frontend",
+					FullyQualifiedDomainName: "frontend.default.dc1.internal.bc3815c2-1a0f-f3ff-a2e9-20d791f08d00.consul",
+					Type:                     "EDS",
+					LastUpdated:              "2022-06-09T00:39:12.855Z",
+				},
+				{
+					Name:                     "server",
+					FullyQualifiedDomainName: "server.default.dc1.internal.bc3815c2-1a0f-f3ff-a2e9-20d791f08d00.consul",
+					Type:                     "EDS",
+					LastUpdated:              "2022-06-09T00:39:12.754Z",
+				},
+			},
+		},
+	}
+
+	for name, tc := range cases {
+		t.Run(name, func(t *testing.T) {
+			actual := testEnvoyConfig.Clusters(tc.fqdnFilter)
+			require.Equal(t, tc.expected, actual)
+		})
+	}
+}
+
 type mockPortForwarder struct {
 	openBehavior func(context.Context) (string, error)
 }
@@ -82,7 +163,7 @@ func (m *mockPortForwarder) Close()                                   {}
 
 // testEnvoyConfig is what we expect the config at `test_config_dump.json` to be.
 var testEnvoyConfig = &EnvoyConfig{
-	Clusters: []Cluster{
+	clusters: []Cluster{
 		{
 			Name:                     "local_agent",
 			FullyQualifiedDomainName: "local_agent",

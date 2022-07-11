@@ -36,6 +36,7 @@ type ReadCommand struct {
 	flagRoutes    bool
 	flagEndpoints bool
 	flagSecrets   bool
+	flagFQDN      string
 
 	// Global Flags
 	flagKubeConfig  string
@@ -94,6 +95,11 @@ func (c *ReadCommand) init() {
 		Name:   "secrets",
 		Target: &c.flagSecrets,
 		Usage:  "Filter output to only show secrets.",
+	})
+	f.StringVar(&flag.StringVar{
+		Name:   "fqdn",
+		Target: &c.flagFQDN,
+		Usage:  "Filter output to only fully qualified domain names (FQDNs) which include the value passed in.",
 	})
 
 	f = c.set.NewSet("GlobalOptions")
@@ -235,9 +241,14 @@ func (c *ReadCommand) outputConfig(config *EnvoyConfig) {
 	filtersPassed := c.flagClusters || c.flagEndpoints || c.flagListeners || c.flagRoutes || c.flagSecrets
 
 	if !filtersPassed || c.flagClusters {
-		c.UI.Output(fmt.Sprintf("Clusters (%d)", len(config.Clusters)), terminal.WithHeaderStyle())
+		filter := ""
+		if c.flagFQDN != "" {
+			filter = fmt.Sprintf("Filtering by FQDNs which contain \"%s\".", c.flagFQDN)
+		}
+
+		c.UI.Output(fmt.Sprintf("Clusters (%d) %s", len(config.Clusters(c.flagFQDN)), filter), terminal.WithHeaderStyle())
 		clusters := terminal.NewTable("Name", "FQDN", "Endpoints", "Type", "Last Updated")
-		for _, cluster := range config.Clusters {
+		for _, cluster := range config.Clusters(c.flagFQDN) {
 			clusters.AddRow([]string{cluster.Name, cluster.FullyQualifiedDomainName, strings.Join(cluster.Endpoints, ", "),
 				cluster.Type, cluster.LastUpdated}, []string{})
 		}

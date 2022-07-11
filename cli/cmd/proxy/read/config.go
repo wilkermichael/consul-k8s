@@ -16,7 +16,7 @@ import (
 // access to the different sections of the config.
 type EnvoyConfig struct {
 	rawCfg    []byte
-	Clusters  []Cluster
+	clusters  []Cluster
 	Endpoints []Endpoint
 	Listeners []Listener
 	Routes    []Route
@@ -122,7 +122,7 @@ func (c *EnvoyConfig) UnmarshalJSON(b []byte) error {
 			if err != nil {
 				return err
 			}
-			c.Clusters = clusters
+			c.clusters = clusters
 		case "type.googleapis.com/envoy.admin.v3.EndpointsConfigDump":
 			endpoints, err := parseEndpoints(config)
 			if err != nil {
@@ -151,6 +151,25 @@ func (c *EnvoyConfig) UnmarshalJSON(b []byte) error {
 	}
 
 	return err
+}
+
+// Clusters returns the Envoy clusters on the EnvoyConfig.
+// Takes a string which will filter the clusters returned to only those with a
+// FullyQualifiedDomainName value that contains the given filter. Pass an empty
+// string to return all clusters.
+func (c *EnvoyConfig) Clusters(fqdnFilter string) []Cluster {
+	if fqdnFilter == "" {
+		return c.clusters
+	}
+
+	var clusters []Cluster
+	for _, cluster := range c.clusters {
+		if strings.Contains(cluster.FullyQualifiedDomainName, fqdnFilter) {
+			clusters = append(clusters, cluster)
+		}
+	}
+
+	return clusters
 }
 
 func parseClusters(rawCfg map[string]interface{}) ([]Cluster, error) {
