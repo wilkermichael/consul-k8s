@@ -1002,6 +1002,16 @@ workflows:
           name: acceptance-4
       - acceptance:
           name: acceptance-5
+      - acceptance-tproxy:
+          name: acceptance-6
+      - acceptance-tproxy:
+          name: acceptance-7
+      - acceptance-tproxy:
+          name: acceptance-8
+      - acceptance-tproxy:
+          name: acceptance-9
+      - acceptance-tproxy:
+          name: acceptance-10
   nightly-acceptance-tests:
     triggers:
       - schedule:
