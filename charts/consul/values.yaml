@@ -776,11 +776,11 @@ server:
   # @type: map
   resources:
     requests:
-      memory: "400Mi"
-      cpu: "400m"
+      memory: "500Mi"
+      cpu: "500m"
     limits:
-      memory: "400Mi"
-      cpu: "400m"
+      memory: "500Mi"
+      cpu: "500m"
 
   # The security context for the server pods. This should be a YAML map corresponding to a
   # Kubernetes [SecurityContext](https://kubernetes.io/docs/tasks/configure-pod-container/security-context/) object.
