@@ -992,8 +992,16 @@ workflows:
 #          requires:
 #            - build-distros-amd64
       # Run acceptance tests using the docker image built for the control plane
-      - acceptance
-      - acceptance-tproxy
+      - acceptance:
+          name: acceptance-1
+      - acceptance:
+          name: acceptance-2
+      - acceptance:
+          name: acceptance-3
+      - acceptance:
+          name: acceptance-4
+      - acceptance:
+          name: acceptance-5
   nightly-acceptance-tests:
     triggers:
       - schedule:
