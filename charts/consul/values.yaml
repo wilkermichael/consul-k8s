@@ -774,13 +774,13 @@ server:
   #
   # @recurse: false
   # @type: map
-  resources: null
-#    requests:
-#      memory: "100Mi"
-#      cpu: "100m"
-#    limits:
-#      memory: "100Mi"
-#      cpu: "100m"
+  resources:
+    requests:
+      memory: "100Mi"
+      cpu: "100m"
+    limits:
+      memory: "100Mi"
+      cpu: "100m"
 
   # The security context for the server pods. This should be a YAML map corresponding to a
   # Kubernetes [SecurityContext](https://kubernetes.io/docs/tasks/configure-pod-container/security-context/) object.
