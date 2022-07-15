@@ -100,20 +100,21 @@ func NewHelmCluster(
 func (h *HelmCluster) Create(t *testing.T) {
 	t.Helper()
 
+	doneChan := make(chan bool)
 	// Make sure we delete the cluster if we receive an interrupt signal and
 	// register cleanup so that we delete the cluster when test finishes.
 	helpers.Cleanup(t, h.noCleanupOnFailure, func() {
+		close(doneChan)
 		h.Destroy(t)
 	})
 
 	// Fail if there are any existing installations of the Helm chart.
 	helpers.CheckForPriorInstallations(t, h.kubernetesClient, h.helmOptions, "consul-helm", "chart=consul-helm")
 
-	doneChan := make(chan bool)
 	go func() {
 		helm.Install(t, h.helmOptions, config.HelmChartPath, h.releaseName)
 		k8s.WaitForAllPodsToBeReady(t, h.kubernetesClient, h.helmOptions.KubectlOptions.Namespace, fmt.Sprintf("release=%s", h.releaseName))
-		doneChan <- true
+		close(doneChan)
 	}()
 
 	timer := time.NewTimer(1 * time.Second)
