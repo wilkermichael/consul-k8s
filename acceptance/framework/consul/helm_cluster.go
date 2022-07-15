@@ -104,7 +104,9 @@ func (h *HelmCluster) Create(t *testing.T) {
 	// Make sure we delete the cluster if we receive an interrupt signal and
 	// register cleanup so that we delete the cluster when test finishes.
 	helpers.Cleanup(t, h.noCleanupOnFailure, func() {
-		close(doneChan)
+		if t.Failed() {
+			close(doneChan)
+		}
 		h.Destroy(t)
 	})
 
