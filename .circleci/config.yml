@@ -518,7 +518,8 @@ jobs:
       - run:
           name: dump logs
           command: |
-            kind export logs $TEST_RESULTS
+            kind export logs --name dc1 $TEST_RESULTS
+            kind export logs --name dc2 $TEST_RESULTS
           when: always
 
   acceptance-tproxy:
