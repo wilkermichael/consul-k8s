@@ -125,8 +125,8 @@ func (h *HelmCluster) Create(t *testing.T) {
 			return
 
 		case <-timer.C:
-			k8s.RunKubectl(t, h.helmOptions.KubectlOptions, "kubectl top nodes")
-			k8s.RunKubectl(t, h.helmOptions.KubectlOptions, "kubectl top pods")
+			k8s.RunKubectl(t, h.helmOptions.KubectlOptions, "top nodes")
+			k8s.RunKubectl(t, h.helmOptions.KubectlOptions, "top pods")
 		}
 	}
 
