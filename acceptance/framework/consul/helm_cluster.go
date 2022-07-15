@@ -109,9 +109,27 @@ func (h *HelmCluster) Create(t *testing.T) {
 	// Fail if there are any existing installations of the Helm chart.
 	helpers.CheckForPriorInstallations(t, h.kubernetesClient, h.helmOptions, "consul-helm", "chart=consul-helm")
 
-	helm.Install(t, h.helmOptions, config.HelmChartPath, h.releaseName)
+	doneChan := make(chan bool)
+	go func() {
+		helm.Install(t, h.helmOptions, config.HelmChartPath, h.releaseName)
+		k8s.WaitForAllPodsToBeReady(t, h.kubernetesClient, h.helmOptions.KubectlOptions.Namespace, fmt.Sprintf("release=%s", h.releaseName))
+		doneChan <- true
+	}()
 
-	k8s.WaitForAllPodsToBeReady(t, h.kubernetesClient, h.helmOptions.KubectlOptions.Namespace, fmt.Sprintf("release=%s", h.releaseName))
+	timer := time.NewTimer(1 * time.Second)
+	defer timer.Stop()
+
+	for {
+		select {
+		case <-doneChan:
+			return
+
+		case <-timer.C:
+			k8s.RunKubectl(t, h.helmOptions.KubectlOptions, "kubectl top nodes")
+			k8s.RunKubectl(t, h.helmOptions.KubectlOptions, "kubectl top pods")
+		}
+	}
+
 }
 
 func (h *HelmCluster) Destroy(t *testing.T) {

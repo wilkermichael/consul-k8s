@@ -59,6 +59,14 @@ commands:
           command: |
             kind create cluster --name dc1 --image kindest/node:<< parameters.version >>
             kind create cluster --name dc2 --image kindest/node:<< parameters.version >>
+            
+            kubectl --context kind-dc1 apply -f https://github.com/kubernetes-sigs/metrics-server/releases/download/v0.5.0/components.yaml
+            kubectl --context kind-dc1 patch -n kube-system deployment metrics-server --type=json \
+              -p '[{"op":"add","path":"/spec/template/spec/containers/0/args/-","value":"--kubelet-insecure-tls"}]'
+            
+            kubectl --context kind-dc2 apply -f https://github.com/kubernetes-sigs/metrics-server/releases/download/v0.5.0/components.yaml
+            kubectl --context kind-dc2 patch -n kube-system deployment metrics-server --type=json \
+              -p '[{"op":"add","path":"/spec/template/spec/containers/0/args/-","value":"--kubelet-insecure-tls"}]'
   run-acceptance-tests:
     parameters:
       failfast:
