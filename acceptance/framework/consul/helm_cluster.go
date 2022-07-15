@@ -104,9 +104,7 @@ func (h *HelmCluster) Create(t *testing.T) {
 	// Make sure we delete the cluster if we receive an interrupt signal and
 	// register cleanup so that we delete the cluster when test finishes.
 	helpers.Cleanup(t, h.noCleanupOnFailure, func() {
-		if t.Failed() {
-			close(doneChan)
-		}
+		close(doneChan)
 		h.Destroy(t)
 	})
 
@@ -114,25 +112,24 @@ func (h *HelmCluster) Create(t *testing.T) {
 	helpers.CheckForPriorInstallations(t, h.kubernetesClient, h.helmOptions, "consul-helm", "chart=consul-helm")
 
 	go func() {
-		helm.Install(t, h.helmOptions, config.HelmChartPath, h.releaseName)
-		k8s.WaitForAllPodsToBeReady(t, h.kubernetesClient, h.helmOptions.KubectlOptions.Namespace, fmt.Sprintf("release=%s", h.releaseName))
-		close(doneChan)
+		timer := time.NewTimer(2 * time.Second)
+		defer timer.Stop()
+		for {
+			select {
+			case <-doneChan:
+				logger.Log(t, "Stopping output of resource utilization")
+				return
+
+			case <-timer.C:
+				_, _ = k8s.RunKubectlAndGetOutputE(t, h.helmOptions.KubectlOptions, "top", "nodes")
+				_, _ = k8s.RunKubectlAndGetOutputE(t, h.helmOptions.KubectlOptions, "top", "pods")
+				timer.Reset(2 * time.Second)
+			}
+		}
 	}()
 
-	timer := time.NewTimer(1 * time.Second)
-	defer timer.Stop()
-
-	for {
-		select {
-		case <-doneChan:
-			return
-
-		case <-timer.C:
-			k8s.RunKubectl(t, h.helmOptions.KubectlOptions, "top", "nodes")
-			k8s.RunKubectl(t, h.helmOptions.KubectlOptions, "top", "pods")
-		}
-	}
-
+	helm.Install(t, h.helmOptions, config.HelmChartPath, h.releaseName)
+	k8s.WaitForAllPodsToBeReady(t, h.kubernetesClient, h.helmOptions.KubectlOptions.Namespace, fmt.Sprintf("release=%s", h.releaseName))
 }
 
 func (h *HelmCluster) Destroy(t *testing.T) {
