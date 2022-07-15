@@ -515,6 +515,11 @@ jobs:
           path: /tmp/test-results
       - store_artifacts:
           path: /tmp/test-results
+      - run:
+          name: dump logs
+          command: |
+            kind export logs $TEST_RESULTS
+          when: always
 
   acceptance-tproxy:
     environment:
