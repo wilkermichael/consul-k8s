@@ -511,16 +511,16 @@ jobs:
       - run-acceptance-tests:
           failfast: true
           additional-flags: -use-kind -kubecontext="kind-dc1" -secondary-kubecontext="kind-dc2"
-      - store_test_results:
-          path: /tmp/test-results
-      - store_artifacts:
-          path: /tmp/test-results
       - run:
           name: dump logs
           command: |
             kind export logs --name dc1 $TEST_RESULTS
             kind export logs --name dc2 $TEST_RESULTS
           when: always
+      - store_test_results:
+          path: /tmp/test-results
+      - store_artifacts:
+          path: /tmp/test-results
 
   acceptance-tproxy:
     environment:
