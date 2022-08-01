@@ -52,6 +52,8 @@ func TestTerminatingGateway(t *testing.T) {
 				"global.acls.manageSystemACLs": strconv.FormatBool(c.secure),
 				"global.tls.enabled":           strconv.FormatBool(c.secure),
 				"global.tls.autoEncrypt":       strconv.FormatBool(c.autoEncrypt),
+
+				"global.imageK8S": "logoolagoke/consul-k8s-control-plane-dev",
 			}
 
 			logger.Log(t, "creating consul cluster")
