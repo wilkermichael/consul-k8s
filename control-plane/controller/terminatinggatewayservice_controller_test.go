@@ -1,10 +1,11 @@
-package connectinject
+package controller
 
 import (
 	"context"
 	"errors"
 	"fmt"
 	logrtest "github.com/go-logr/logr/testing"
+	"github.com/hashicorp/consul-k8s/control-plane/connect-inject"
 	"github.com/hashicorp/consul/api"
 	"github.com/hashicorp/consul/sdk/testutil"
 	"github.com/stretchr/testify/require"
@@ -261,7 +262,7 @@ func TestReconcile_DeleteTerminatingGatewayService(t *testing.T) {
 				Name:              "Terminating gateway service-deleted",
 				Namespace:         "default",
 				DeletionTimestamp: &metav1.Time{Time: time.Now()},
-				Finalizers:        []string{FinalizerName},
+				Finalizers:        []string{connectinject.FinalizerName},
 			},
 			Spec: v1alpha1.TerminatingGatewayServiceSpec{
 				CatalogRegistration: &v1alpha1.CatalogRegistration{

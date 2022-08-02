@@ -478,26 +478,26 @@ func (c *Command) Run(args []string) int {
 			}})
 	}
 
-	if c.flagEnableTermGtwService {
-		if err = (&connectinject.TerminatingGatewayServiceController{
-			Client:       mgr.GetClient(),
-			ConsulClient: c.consulClient,
-			Log:          ctrl.Log.WithName("controller").WithName("terminating-gateway-service"),
-			Scheme:       mgr.GetScheme(),
-			Context:      ctx,
-			AclEnabled:   c.flagACLAuthMethod == "",
-		}).SetupWithManager(mgr); err != nil {
-			setupLog.Error(err, "unable to create controller", "controller", "terminating-gateway-service")
-			return 1
-		}
-
-		mgr.GetWebhookServer().Register("/mutate-v1alpha1-terminatinggatewayservices",
-			&webhook.Admission{Handler: &v1alpha1.TerminatingGatewayServiceWebhook{
-				Client:       mgr.GetClient(),
-				ConsulClient: c.consulClient,
-				Logger:       ctrl.Log.WithName("webhooks").WithName("terminating-gateway-service"),
-			}})
-	}
+	//if c.flagEnableTermGtwService {
+	//	if err = (&connectinject.TerminatingGatewayServiceController{
+	//		Client:       mgr.GetClient(),
+	//		ConsulClient: c.consulClient,
+	//		Log:          ctrl.Log.WithName("controller").WithName("terminating-gateway-service"),
+	//		Scheme:       mgr.GetScheme(),
+	//		Context:      ctx,
+	//		AclEnabled:   c.flagACLAuthMethod == "",
+	//	}).SetupWithManager(mgr); err != nil {
+	//		setupLog.Error(err, "unable to create controller", "controller", "terminating-gateway-service")
+	//		return 1
+	//	}
+	//
+	//	mgr.GetWebhookServer().Register("/mutate-v1alpha1-terminatinggatewayservices",
+	//		&webhook.Admission{Handler: &v1alpha1.TerminatingGatewayServiceWebhook{
+	//			Client:       mgr.GetClient(),
+	//			ConsulClient: c.consulClient,
+	//			Logger:       ctrl.Log.WithName("webhooks").WithName("terminating-gateway-service"),
+	//		}})
+	//}
 
 	mgr.GetWebhookServer().CertDir = c.flagCertDir
 

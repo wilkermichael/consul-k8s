@@ -1,0 +1,2 @@
+resources:
+  - terminating-gateway-service.yaml

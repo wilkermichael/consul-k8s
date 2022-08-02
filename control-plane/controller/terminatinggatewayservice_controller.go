@@ -1,4 +1,4 @@
-package connectinject
+package controller
 
 import (
 	"context"
@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	consulv1alpha1 "github.com/hashicorp/consul-k8s/control-plane/api/v1alpha1"
+	"github.com/hashicorp/consul-k8s/control-plane/connect-inject"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"reflect"
@@ -63,20 +64,20 @@ func (r *TerminatingGatewayServiceController) Reconcile(ctx context.Context, req
 	// in case it does not exist to all resources. If the DeletionTimestamp is non-zero, the object has been
 	// marked for deletion and goes into the deletion workflow.
 	if terminatingGatewayService.GetDeletionTimestamp().IsZero() {
-		if !controllerutil.ContainsFinalizer(terminatingGatewayService, FinalizerName) {
-			controllerutil.AddFinalizer(terminatingGatewayService, FinalizerName)
+		if !controllerutil.ContainsFinalizer(terminatingGatewayService, connectinject.FinalizerName) {
+			controllerutil.AddFinalizer(terminatingGatewayService, connectinject.FinalizerName)
 			if err := r.Update(ctx, terminatingGatewayService); err != nil {
 				return ctrl.Result{}, err
 			}
 		}
 	} else {
-		if containsString(terminatingGatewayService.Finalizers, FinalizerName) {
+		if controllerutil.ContainsFinalizer(terminatingGatewayService, connectinject.FinalizerName) {
 			r.Log.Info("TerminatingGatewayService was deleted, deleting from consul", "name", req.Name, "ns", req.Namespace)
 			_, err := r.deleteService(spec.CatalogRegistration.Service.Service)
 			if err != nil {
 				return ctrl.Result{}, err
 			}
-			controllerutil.RemoveFinalizer(terminatingGatewayService, FinalizerName)
+			controllerutil.RemoveFinalizer(terminatingGatewayService, connectinject.FinalizerName)
 			err = r.Update(ctx, terminatingGatewayService)
 			return ctrl.Result{}, err
 		}

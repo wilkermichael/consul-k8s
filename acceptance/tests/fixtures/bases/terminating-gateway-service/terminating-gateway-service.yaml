@@ -1,0 +1,12 @@
+apiVersion: consul.hashicorp.com/v1alpha1
+kind: TerminatingGatewayService
+metadata:
+  name: terminating-gateway-service
+spec:
+  catalogRegistration:
+    node: "legacy_node"
+    address: "static-server"
+    service:
+      ID: "static-server"
+      service: "static-server"
+      port: 80

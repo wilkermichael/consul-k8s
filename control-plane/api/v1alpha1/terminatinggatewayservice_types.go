@@ -43,7 +43,7 @@ type TerminatingGatewayServiceList struct {
 // TerminatingGatewayServiceSpec defines the desired state of TerminatingGatewayService.
 type TerminatingGatewayServiceSpec struct {
 	// CatalogRegistration contains information about a service, needed for registration or de-registration.
-	CatalogRegistration *CatalogRegistration `json:"service,omitempty"`
+	CatalogRegistration *CatalogRegistration `json:"catalogRegistration,omitempty"`
 }
 
 type CatalogRegistration struct {

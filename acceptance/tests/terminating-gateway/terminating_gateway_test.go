@@ -2,10 +2,6 @@ package terminatinggateway
 
 import (
 	"fmt"
-	"strconv"
-	"strings"
-	"testing"
-
 	terratestk8s "github.com/gruntwork-io/terratest/modules/k8s"
 	"github.com/hashicorp/consul-k8s/acceptance/framework/consul"
 	"github.com/hashicorp/consul-k8s/acceptance/framework/helpers"
@@ -13,6 +9,9 @@ import (
 	"github.com/hashicorp/consul-k8s/acceptance/framework/logger"
 	"github.com/hashicorp/consul/api"
 	"github.com/stretchr/testify/require"
+	"strconv"
+	"strings"
+	"testing"
 )
 
 const StaticClientName = "static-client"
@@ -24,18 +23,18 @@ func TestTerminatingGateway(t *testing.T) {
 		secure      bool
 		autoEncrypt bool
 	}{
-		{
-			false,
-			false,
-		},
-		{
-			true,
-			true,
-		},
+		//{
+		//	false,
+		//	false,
+		//},
 		{
 			true,
 			true,
 		},
+		//{
+		//	true,
+		//	true,
+		//},
 	}
 	for _, c := range cases {
 		name := fmt.Sprintf("secure: %t, auto-encrypt: %t", c.secure, c.autoEncrypt)
@@ -44,6 +43,8 @@ func TestTerminatingGateway(t *testing.T) {
 			cfg := suite.Config()
 
 			helmValues := map[string]string{
+
+				"controller.enabled":                       "true",
 				"connectInject.enabled":                    "true",
 				"terminatingGateways.enabled":              "true",
 				"terminatingGateways.gateways[0].name":     "terminating-gateway",
@@ -58,25 +59,33 @@ func TestTerminatingGateway(t *testing.T) {
 
 			logger.Log(t, "creating consul cluster")
 			releaseName := helpers.RandomName()
+
 			consulCluster := consul.NewHelmCluster(t, helmValues, ctx, cfg, releaseName)
+
 			consulCluster.Create(t)
 
 			// Deploy a static-server that will play the role of an external service.
 			logger.Log(t, "creating static-server deployment")
+
 			k8s.DeployKustomize(t, ctx.KubectlOptions(t), cfg.NoCleanupOnFailure, cfg.DebugDirectory, "../fixtures/bases/static-server")
 
 			// Once the cluster is up, register the external service, then create the config entry.
 			consulClient, _ := consulCluster.SetupConsulClient(t, c.secure)
 
-			// Register the external service
-			registerExternalService(t, consulClient, "")
+			//// Register the external service
+			//registerExternalService(t, consulClient, "")
+			//
+			//// If ACLs are enabled we need to update the role of the terminating gateway
+			//// with service:write permissions to the static-server service
+			//// so that it can can request Connect certificates for it.
+			//if c.secure {
+			//	updateTerminatingGatewayRole(t, consulClient, staticServerPolicyRules)
+			//}
 
-			// If ACLs are enabled we need to update the role of the terminating gateway
-			// with service:write permissions to the static-server service
-			// so that it can can request Connect certificates for it.
-			if c.secure {
-				updateTerminatingGatewayRole(t, consulClient, staticServerPolicyRules)
-			}
+			// I think you can work without an image. Just apply the crd.yaml that contains the defintion. what about the methods.
+
+			// this command should start your controller with the spec inside and get everything ready.
+			k8s.DeployKustomize(t, ctx.KubectlOptions(t), cfg.NoCleanupOnFailure, cfg.DebugDirectory, "../fixtures/bases/terminating-gateway-service")
 
 			// Create the config entry for the terminating gateway.
 			createTerminatingGatewayConfigEntry(t, consulClient, "", "")

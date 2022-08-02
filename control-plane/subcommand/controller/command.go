@@ -255,6 +255,30 @@ func (c *Command) Run(args []string) int {
 		return 1
 	}
 
+	ctx, cancelFunc := context.WithCancel(context.Background())
+	defer cancelFunc()
+
+	if err = (&controller.TerminatingGatewayServiceController{
+		Client:       mgr.GetClient(),
+		ConsulClient: consulClient,
+		Log:          ctrl.Log.WithName("controller").WithName("terminating-gateway-service"),
+		Scheme:       mgr.GetScheme(),
+		Context:      ctx,
+		// TODO: figure out if ACLs are enabled
+		//AclEnabled:   c.flagACLAuthMethod == "",
+		AclEnabled: true,
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "terminating-gateway-service")
+		return 1
+	}
+
+	mgr.GetWebhookServer().Register("/mutate-v1alpha1-terminatinggatewayservices",
+		&webhook.Admission{Handler: &v1alpha1.TerminatingGatewayServiceWebhook{
+			Client:       mgr.GetClient(),
+			ConsulClient: consulClient,
+			Logger:       ctrl.Log.WithName("webhooks").WithName("terminating-gateway-service"),
+		}})
+
 	if c.flagEnableWebhooks {
 		// This webhook server sets up a Cert Watcher on the CertDir. This watches for file changes and updates the webhook certificates
 		// automatically when new certificates are available.

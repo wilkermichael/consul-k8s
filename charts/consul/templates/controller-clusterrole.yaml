@@ -23,6 +23,7 @@ rules:
   - serviceintentions
   - ingressgateways
   - terminatinggateways
+  - terminatinggatewayservices
   verbs:
   - create
   - delete
@@ -44,6 +45,7 @@ rules:
   - serviceintentions/status
   - ingressgateways/status
   - terminatinggateways/status
+  - terminatinggatewayservices/status
   verbs:
   - get
   - patch
