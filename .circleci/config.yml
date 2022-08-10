@@ -100,6 +100,7 @@ commands:
                           << parameters.additional-flags >> \
                           ${ENABLE_ENTERPRISE:+-enable-enterprise} \
                           -enable-multi-cluster \
+                          -run TestConnectInject/CLI_install_without_secure_or_auto-encrypt \
                           -debug-directory="$TEST_RESULTS/debug" \
                           -consul-image=ishustava/consul-dev:latest \
                           -consul-k8s-image=<< parameters.consul-k8s-image >>
