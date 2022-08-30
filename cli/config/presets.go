@@ -53,6 +53,8 @@ server:
   replicas: 1
 connectInject:
   enabled: true
+  cni:
+    enabled: true
 controller:
   enabled: true
 `
