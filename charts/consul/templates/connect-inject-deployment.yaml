@@ -191,6 +191,7 @@ spec:
                 {{- else }}
                 -default-enable-metrics=false \
                 {{- end }}
+                -enable-gateway-metrics={{ .Values.global.metrics.enableGatewayMetrics }}  \
                 -default-enable-metrics-merging={{ .Values.connectInject.metrics.defaultEnableMerging }}  \
                 -default-merged-metrics-port={{ .Values.connectInject.metrics.defaultMergedMetricsPort }} \
                 -default-prometheus-scrape-port={{ .Values.connectInject.metrics.defaultPrometheusScrapePort }} \
@@ -398,6 +399,7 @@ spec:
               {{- if and .Values.global.federation.enabled .Values.global.federation.primaryDatacenter .Values.global.enableConsulNamespaces }}
               -acl-auth-method={{ template "consul.fullname" . }}-k8s-component-auth-method-{{ .Values.global.datacenter }} \
               -primary-datacenter={{ .Values.global.federation.primaryDatacenter }} \
+              -enable-federation \
               {{- else }}
               -acl-auth-method={{ template "consul.fullname" . }}-k8s-component-auth-method \
               {{- end }}

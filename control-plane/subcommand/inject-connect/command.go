@@ -82,6 +82,7 @@ type Command struct {
 
 	// Metrics settings.
 	flagDefaultEnableMetrics        bool
+	flagEnableGatewayMetrics        bool
 	flagDefaultEnableMetricsMerging bool
 	flagDefaultMergedMetricsPort    string
 	flagDefaultPrometheusScrapePort string
@@ -109,6 +110,9 @@ type Command struct {
 
 	// Peering flags.
 	flagEnablePeering bool
+
+	// WAN Federation flags.
+	flagEnableFederation bool
 
 	// Consul DNS flags.
 	flagEnableConsulDNS bool
@@ -153,6 +157,7 @@ func (c *Command) init() {
 	c.flagSet.StringVar(&c.flagConsulK8sImage, "consul-k8s-image", "",
 		"Docker image for consul-k8s. Used for the connect sidecar.")
 	c.flagSet.BoolVar(&c.flagEnablePeering, "enable-peering", false, "Enable cluster peering controllers.")
+	c.flagSet.BoolVar(&c.flagEnableFederation, "enable-federation", false, "Enable Consul WAN Federation.")
 	c.flagSet.StringVar(&c.flagEnvoyExtraArgs, "envoy-extra-args", "",
 		"Extra envoy command line args to be set when starting envoy (e.g \"--log-level debug --disable-hot-restart\").")
 	c.flagSet.StringVar(&c.flagACLAuthMethod, "acl-auth-method", "",
@@ -219,6 +224,7 @@ func (c *Command) init() {
 
 	// Metrics setting flags.
 	c.flagSet.BoolVar(&c.flagDefaultEnableMetrics, "default-enable-metrics", false, "Default for enabling connect service metrics.")
+	c.flagSet.BoolVar(&c.flagEnableGatewayMetrics, "enable-gateway-metrics", false, "Allows enabling Consul gateway metrics.")
 	c.flagSet.BoolVar(&c.flagDefaultEnableMetricsMerging, "default-enable-metrics-merging", false, "Default for enabling merging of connect service metrics and envoy proxy metrics.")
 	c.flagSet.StringVar(&c.flagDefaultMergedMetricsPort, "default-merged-metrics-port", "20100", "Default port for merged metrics endpoint on the consul-sidecar.")
 	c.flagSet.StringVar(&c.flagDefaultPrometheusScrapePort, "default-prometheus-scrape-port", "20200", "Default port where Prometheus scrapes connect metrics from.")
@@ -442,6 +448,7 @@ func (c *Command) Run(args []string) int {
 
 	metricsConfig := connectinject.MetricsConfig{
 		DefaultEnableMetrics:        c.flagDefaultEnableMetrics,
+		EnableGatewayMetrics:        c.flagEnableGatewayMetrics,
 		DefaultEnableMetricsMerging: c.flagDefaultEnableMetricsMerging,
 		DefaultMergedMetricsPort:    c.flagDefaultMergedMetricsPort,
 		DefaultPrometheusScrapePort: c.flagDefaultPrometheusScrapePort,
@@ -461,6 +468,7 @@ func (c *Command) Run(args []string) int {
 		NSMirroringPrefix:          c.flagK8SNSMirroringPrefix,
 		CrossNSACLPolicy:           c.flagCrossNamespaceACLPolicy,
 		EnableTransparentProxy:     c.flagDefaultEnableTransparentProxy,
+		EnableWANFederation:        c.flagEnableFederation,
 		TProxyOverwriteProbes:      c.flagTransparentProxyDefaultOverwriteProbes,
 		AuthMethod:                 c.flagACLAuthMethod,
 		Log:                        ctrl.Log.WithName("controller").WithName("endpoints"),
