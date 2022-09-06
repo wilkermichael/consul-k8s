@@ -288,6 +288,7 @@ func (c *Command) Run(args []string) int {
 				Client:       mgr.GetClient(),
 				ConsulClient: consulClient,
 				Logger:       ctrl.Log.WithName("webhooks").WithName(common.Mesh),
+				ConsulMeta:   consulMeta,
 			}})
 		mgr.GetWebhookServer().Register("/mutate-v1alpha1-exportedservices",
 			&webhook.Admission{Handler: &v1alpha1.ExportedServicesWebhook{

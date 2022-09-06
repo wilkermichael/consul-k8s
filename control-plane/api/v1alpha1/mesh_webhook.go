@@ -19,7 +19,11 @@ type MeshWebhook struct {
 	client.Client
 	ConsulClient *capi.Client
 	Logger       logr.Logger
-	decoder      *admission.Decoder
+
+	// ConsulMeta contains metadata specific to the Consul installation.
+	ConsulMeta common.ConsulMeta
+
+	decoder *admission.Decoder
 }
 
 // NOTE: The path value in the below line is the path to the webhook.
@@ -59,7 +63,19 @@ func (v *MeshWebhook) Handle(ctx context.Context, req admission.Request) admissi
 		}
 	}
 
-	return admission.Allowed(fmt.Sprintf("valid %s request", mesh.KubeKind()))
+	return common.ValidateConfigEntry(ctx, req, v.Logger, v, &mesh, v.ConsulMeta)
+}
+
+func (v *MeshWebhook) List(ctx context.Context) ([]common.ConfigEntryResource, error) {
+	var meshList MeshList
+	if err := v.Client.List(ctx, &meshList); err != nil {
+		return nil, err
+	}
+	var entries []common.ConfigEntryResource
+	for _, item := range meshList.Items {
+		entries = append(entries, common.ConfigEntryResource(&item))
+	}
+	return entries, nil
 }
 
 func (v *MeshWebhook) InjectDecoder(d *admission.Decoder) error {
