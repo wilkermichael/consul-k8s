@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/hashicorp/consul-k8s/control-plane/version"
+	"github.com/hashicorp/consul-server-connection-manager/discovery"
 	capi "github.com/hashicorp/consul/api"
 )
 
@@ -48,4 +49,20 @@ func NewClient(config *capi.Config, consulAPITimeout time.Duration) (*capi.Clien
 	}
 	client.AddHeader("User-Agent", fmt.Sprintf("consul-k8s/%s", version.GetHumanVersion()))
 	return client, nil
+}
+
+type Config struct {
+	ConsulConfig *capi.Config
+	HTTPPort     int
+	APITimeout   time.Duration
+}
+
+// todo: needs a better name
+func NewClientFromState(config *Config, state discovery.State) (*capi.Client, error) {
+	ipAddress := state.Address.IP
+	config.ConsulConfig.Address = fmt.Sprintf("%s:%d", ipAddress.String(), config.HTTPPort)
+	if state.Token != "" {
+		config.ConsulConfig.Token = state.Token
+	}
+	return NewClient(config.ConsulConfig, config.APITimeout)
 }

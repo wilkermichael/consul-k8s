@@ -584,8 +584,8 @@ func TestReconcile_CreateUpdatePeeringAcceptor(t *testing.T) {
 				ExposeServersServiceName:  "test-expose-servers",
 				ReleaseNamespace:          "default",
 				Log:                       logrtest.TestLogger{T: t},
-				ConsulClient:              consulClient,
-				Scheme:                    s,
+				//ConsulClient:              consulClient,
+				Scheme: s,
 			}
 			namespacedName := types.NamespacedName{
 				Name:      "acceptor-created",
@@ -713,10 +713,10 @@ func TestReconcile_DeletePeeringAcceptor(t *testing.T) {
 
 	// Create the peering acceptor controller.
 	controller := &PeeringAcceptorController{
-		Client:       fakeClient,
-		Log:          logrtest.TestLogger{T: t},
-		ConsulClient: consulClient,
-		Scheme:       s,
+		Client: fakeClient,
+		Log:    logrtest.TestLogger{T: t},
+		//ConsulClient: consulClient,
+		Scheme: s,
 	}
 	namespacedName := types.NamespacedName{
 		Name:      "acceptor-deleted",
@@ -867,10 +867,10 @@ func TestReconcile_VersionAnnotation(t *testing.T) {
 
 			// Create the peering acceptor controller
 			controller := &PeeringAcceptorController{
-				Client:       fakeClient,
-				Log:          logrtest.TestLogger{T: t},
-				ConsulClient: consulClient,
-				Scheme:       s,
+				Client: fakeClient,
+				Log:    logrtest.TestLogger{T: t},
+				//ConsulClient: consulClient,
+				Scheme: s,
 			}
 			namespacedName := types.NamespacedName{
 				Name:      "acceptor-created",

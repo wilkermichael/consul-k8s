@@ -318,10 +318,10 @@ func TestReconcile_CreateUpdatePeeringDialer(t *testing.T) {
 
 			// Create the peering dialer controller
 			controller := &PeeringDialerController{
-				Client:       fakeClient,
-				Log:          logrtest.TestLogger{T: t},
-				ConsulClient: dialerClient,
-				Scheme:       s,
+				Client: fakeClient,
+				Log:    logrtest.TestLogger{T: t},
+				//ConsulClient: dialerClient,
+				Scheme: s,
 			}
 			namespacedName := types.NamespacedName{
 				Name:      "peering",
@@ -512,10 +512,10 @@ func TestReconcile_VersionAnnotationPeeringDialer(t *testing.T) {
 
 			// Create the peering dialer controller
 			controller := &PeeringDialerController{
-				Client:       fakeClient,
-				Log:          logrtest.TestLogger{T: t},
-				ConsulClient: dialerClient,
-				Scheme:       s,
+				Client: fakeClient,
+				Log:    logrtest.TestLogger{T: t},
+				//ConsulClient: dialerClient,
+				Scheme: s,
 			}
 			namespacedName := types.NamespacedName{
 				Name:      "peering",
@@ -745,10 +745,10 @@ func TestReconcileDeletePeeringDialer(t *testing.T) {
 
 	// Create the peering dialer controller.
 	pdc := &PeeringDialerController{
-		Client:       fakeClient,
-		Log:          logrtest.TestLogger{T: t},
-		ConsulClient: consulClient,
-		Scheme:       s,
+		Client: fakeClient,
+		Log:    logrtest.TestLogger{T: t},
+		//ConsulClient: consulClient,
+		Scheme: s,
 	}
 	namespacedName := types.NamespacedName{
 		Name:      "dialer-deleted",

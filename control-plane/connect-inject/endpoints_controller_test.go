@@ -10,9 +10,12 @@ import (
 	logrtest "github.com/go-logr/logr/testing"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
+	"github.com/hashicorp/consul-k8s/control-plane/consul"
 	"github.com/hashicorp/consul-k8s/control-plane/helper/test"
+	"github.com/hashicorp/consul-server-connection-manager/discovery"
 	"github.com/hashicorp/consul/api"
 	"github.com/hashicorp/consul/sdk/testutil"
+	"github.com/hashicorp/go-hclog"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -689,14 +692,13 @@ func TestProcessUpstreams(t *testing.T) {
 
 			ep := &EndpointsController{
 				Log:                    logrtest.TestLogger{T: t},
-				ConsulClient:           consulClient,
 				AllowK8sNamespacesSet:  mapset.NewSetWith("*"),
 				DenyK8sNamespacesSet:   mapset.NewSetWith(),
 				EnableConsulNamespaces: tt.consulNamespacesEnabled,
 				EnableConsulPartitions: tt.consulPartitionsEnabled,
 			}
 
-			upstreams, err := ep.processUpstreams(*tt.pod(), corev1.Endpoints{
+			upstreams, err := ep.processUpstreams(consulClient, *tt.pod(), corev1.Endpoints{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:        "svcname",
 					Namespace:   "default",
@@ -991,9 +993,9 @@ func TestReconcileCreateEndpoint_MultiportService(t *testing.T) {
 
 			// Create the endpoints controller
 			ep := &EndpointsController{
-				Client:                fakeClient,
-				Log:                   logrtest.TestLogger{T: t},
-				ConsulClient:          consulClient,
+				Client: fakeClient,
+				Log:    logrtest.TestLogger{T: t},
+				//ConsulClient:          consulClient,
 				AllowK8sNamespacesSet: mapset.NewSetWith("*"),
 				DenyK8sNamespacesSet:  mapset.NewSetWith(),
 				ReleaseName:           "consul",
@@ -1640,26 +1642,37 @@ func TestReconcileCreateEndpoint(t *testing.T) {
 
 			fakeClient := fake.NewClientBuilder().WithRuntimeObjects(k8sObjects...).Build()
 
-			// Create test consul server
-			consul, err := testutil.NewTestServerConfigT(t, nil)
+			// Create test consulServer server
+			var cfg *testutil.TestServerConfig
+			consulServer, err := testutil.NewTestServerConfigT(t, func(c *testutil.TestServerConfig) {
+				cfg = c
+			})
 			require.NoError(t, err)
-			defer consul.Stop()
-			consul.WaitForServiceIntentions(t)
+			defer consulServer.Stop()
+			consulServer.WaitForServiceIntentions(t)
 
-			cfg := &api.Config{
-				Address: consul.HTTPAddr,
+			consulConfig := &consul.Config{
+				ConsulConfig: &api.Config{Address: consulServer.HTTPAddr},
+				HTTPPort:     cfg.Ports.HTTP,
 			}
-			consulClient, err := api.NewClient(cfg)
+			consulClient, err := api.NewClient(consulConfig.ConsulConfig)
 			require.NoError(t, err)
+
+			ctx, cancelFunc := context.WithCancel(context.Background())
+			t.Cleanup(cancelFunc)
+			watcher, err := discovery.NewWatcher(ctx, discovery.Config{Addresses: "exec=echo 127.0.0.1", GRPCPort: cfg.Ports.GRPC}, hclog.NewNullLogger())
+			require.NoError(t, err)
+			go watcher.Run()
 
 			// Create the endpoints controller.
 			ep := &EndpointsController{
 				Client:                fakeClient,
 				Log:                   logrtest.TestLogger{T: t},
-				ConsulClient:          consulClient,
+				ConsulClientConfig:    consulConfig,
+				ConsulServerConnMgr:   watcher,
 				AllowK8sNamespacesSet: mapset.NewSetWith("*"),
 				DenyK8sNamespacesSet:  mapset.NewSetWith(),
-				ReleaseName:           "consul",
+				ReleaseName:           "consulServer",
 				ReleaseNamespace:      "default",
 			}
 			namespacedName := types.NamespacedName{
@@ -2950,9 +2963,9 @@ func TestReconcileUpdateEndpoint(t *testing.T) {
 
 			// Create the endpoints controller.
 			ep := &EndpointsController{
-				Client:                fakeClient,
-				Log:                   logrtest.TestLogger{T: t},
-				ConsulClient:          consulClient,
+				Client: fakeClient,
+				Log:    logrtest.TestLogger{T: t},
+				//ConsulClient:          consulClient,
 				AllowK8sNamespacesSet: mapset.NewSetWith("*"),
 				DenyK8sNamespacesSet:  mapset.NewSetWith(),
 				ReleaseName:           "consul",
@@ -3209,9 +3222,9 @@ func TestReconcileDeleteEndpoint(t *testing.T) {
 
 			// Create the endpoints controller
 			ep := &EndpointsController{
-				Client:                fakeClient,
-				Log:                   logrtest.TestLogger{T: t},
-				ConsulClient:          consulClient,
+				Client: fakeClient,
+				Log:    logrtest.TestLogger{T: t},
+				//ConsulClient:          consulClient,
 				AllowK8sNamespacesSet: mapset.NewSetWith("*"),
 				DenyK8sNamespacesSet:  mapset.NewSetWith(),
 				ReleaseName:           "consul",
@@ -3356,9 +3369,9 @@ func TestReconcileIgnoresServiceIgnoreLabel(t *testing.T) {
 
 			// Create the endpoints controller.
 			ep := &EndpointsController{
-				Client:                fakeClient,
-				Log:                   logrtest.TestLogger{T: t},
-				ConsulClient:          consulClient,
+				Client: fakeClient,
+				Log:    logrtest.TestLogger{T: t},
+				//ConsulClient:          consulClient,
 				AllowK8sNamespacesSet: mapset.NewSetWith("*"),
 				DenyK8sNamespacesSet:  mapset.NewSetWith(),
 				ReleaseName:           "consul",
@@ -3445,9 +3458,9 @@ func TestReconcile_podSpecifiesExplicitService(t *testing.T) {
 
 	// Create the endpoints controller.
 	ep := &EndpointsController{
-		Client:                fakeClient,
-		Log:                   logrtest.TestLogger{T: t},
-		ConsulClient:          consulClient,
+		Client: fakeClient,
+		Log:    logrtest.TestLogger{T: t},
+		//ConsulClient:          consulClient,
 		AllowK8sNamespacesSet: mapset.NewSetWith("*"),
 		DenyK8sNamespacesSet:  mapset.NewSetWith(),
 		ReleaseName:           "consul",
@@ -3622,9 +3635,11 @@ func TestServiceInstancesForK8SServiceNameAndNamespace(t *testing.T) {
 				_, err = consulClient.Catalog().Register(catalogRegistration, nil)
 				require.NoError(t, err)
 			}
-			ep := EndpointsController{ConsulClient: consulClient}
+			ep := EndpointsController{
+				//ConsulClient: consulClient,
+			}
 
-			svcs, err := ep.serviceInstancesForK8SServiceNameAndNamespace(k8sSvc, k8sNS)
+			svcs, err := ep.serviceInstancesForK8SServiceNameAndNamespace(consulClient, k8sSvc, k8sNS)
 			require.NoError(t, err)
 			if len(svcs.Services) > 0 {
 				require.Len(t, svcs, 2)
@@ -4927,7 +4942,7 @@ func TestCreateServiceRegistrations_withTransparentProxy(t *testing.T) {
 				Log:                    logrtest.TestLogger{T: t},
 			}
 
-			serviceRegistration, proxyServiceRegistration, err := epCtrl.createServiceRegistrations(*pod, *endpoints, api.HealthPassing)
+			serviceRegistration, proxyServiceRegistration, err := epCtrl.createServiceRegistrations(nil, *pod, *endpoints, api.HealthPassing)
 			if c.expErr != "" {
 				require.EqualError(t, err, c.expErr)
 			} else {

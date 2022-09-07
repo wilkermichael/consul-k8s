@@ -246,7 +246,7 @@ func TestHandler_MutateWithNamespaces(t *testing.T) {
 			require.NoError(err)
 
 			// Add the client to the test's meshWebhook
-			tt.Webhook.ConsulClient = client
+			tt.Webhook.ConsulClientConfig = client
 
 			// Mutate!
 			resp := tt.Webhook.Handle(context.Background(), tt.Req)
@@ -526,7 +526,7 @@ func TestHandler_MutateWithNamespaces_ACLs(t *testing.T) {
 			require.NoError(t, err)
 
 			// Add the client to the test's meshWebhook
-			tt.Webhook.ConsulClient = client
+			tt.Webhook.ConsulClientConfig = client
 
 			// Create cross namespace policy
 			// This would have been created by the acl bootstrapper in the
@@ -648,7 +648,7 @@ func TestHandler_MutateWithNamespaces_Annotation(t *testing.T) {
 				ConsulDestinationNamespace: c.ConsulDestinationNamespace,
 				EnableK8SNSMirroring:       c.Mirroring,
 				K8SNSMirroringPrefix:       c.MirroringPrefix,
-				ConsulClient:               client,
+				ConsulClientConfig:         client,
 				decoder:                    decoder,
 				Clientset:                  clientWithNamespace(sourceKubeNS),
 			}

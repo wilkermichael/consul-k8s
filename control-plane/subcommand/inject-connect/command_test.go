@@ -43,7 +43,7 @@ func TestRun_FlagValidation(t *testing.T) {
 		},
 		{
 			flags: []string{"-consul-k8s-image", "foo", "-consul-image", "foo", "-consul-dataplane-image", "consul-dataplane:1.14.0",
-				"-consul-api-timeout", "5s", "-default-protocol", "http"},
+				"-consul-api-timeout", "5s", "-default-protocol", "consul"},
 			expErr: "-default-protocol is no longer supported",
 		},
 		{
@@ -167,13 +167,13 @@ func TestRun_FlagValidation(t *testing.T) {
 		},
 		{
 			flags: []string{"-consul-k8s-image", "hashicorp/consul-k8s", "-consul-image", "foo", "-consul-dataplane-image", "consul-dataplane:1.14.0",
-				"-consul-api-timeout", "5s", "-http-addr=http://0.0.0.0:9999",
+				"-consul-api-timeout", "5s", "-consul-addr=consul://0.0.0.0:9999",
 				"-listen", "999999"},
 			expErr: "missing port in address: 999999",
 		},
 		{
 			flags: []string{"-consul-k8s-image", "hashicorp/consul-k8s", "-consul-image", "foo", "-consul-dataplane-image", "consul-dataplane:1.14.0",
-				"-consul-api-timeout", "5s", "-http-addr=http://0.0.0.0:9999",
+				"-consul-api-timeout", "5s", "-consul-addr=consul://0.0.0.0:9999",
 				"-listen", ":foobar"},
 			expErr: "unable to parse port string: strconv.Atoi: parsing \"foobar\": invalid syntax",
 		},
@@ -236,5 +236,5 @@ func TestRun_ValidationConsulHTTPAddr(t *testing.T) {
 	os.Unsetenv(api.HTTPAddrEnvName)
 
 	require.Equal(t, 1, code)
-	require.Contains(t, ui.ErrorWriter.String(), "error parsing consul address \"http://%\": parse \"http://%\": invalid URL escape \"%")
+	require.Contains(t, ui.ErrorWriter.String(), "error parsing consul address \"consul://%\": parse \"consul://%\": invalid URL escape \"%")
 }
