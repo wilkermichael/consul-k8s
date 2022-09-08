@@ -41,6 +41,10 @@ const (
 	// truthy or falsy value, as parseable by strconv.ParseBool.
 	annotationMeshGatewayWANPort = "consul.hashicorp.com/mesh-gateway-wan-port"
 
+	// annotationTerminatingGatewayNamespace is the key of the annotation that
+	// determines the Consul namespace where a Terminating Gateway pod is deployed.
+	annotationTerminatingGatewayNamespace = "consul.hashicorp.com/terminating-gateway-namespace"
+
 	// annotationInjectMountVolumes is the key of the annotation that controls whether
 	// the data volume that connect inject uses to store data including the Consul ACL token
 	// is mounted to other containers in the pod. It is a comma-separated list of container names

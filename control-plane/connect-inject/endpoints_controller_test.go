@@ -1072,9 +1072,8 @@ func TestReconcileCreateEndpoint_MultiportService(t *testing.T) {
 }
 
 // TestReconcileCreateEndpoint tests the logic to create service instances in Consul from the addresses in the Endpoints
-// object. The cases test an empty endpoints object, a basic endpoints object with one address, a basic endpoints object
-// with two addresses, and an endpoints object with every possible customization.
-// This test covers EndpointsController.createServiceRegistrations.
+// object. This test covers EndpointsController.createServiceRegistrations and EndpointsController.createGatewayRegistrations.
+// This test depends on a Consul binary being present on the host machine.
 func TestReconcileCreateEndpoint(t *testing.T) {
 	t.Parallel()
 	cases := []struct {
@@ -1322,6 +1321,165 @@ func TestReconcileCreateEndpoint(t *testing.T) {
 				},
 			},
 			metricsEnabled: true,
+		},
+		{
+			name:          "Terminating Gateway",
+			svcName:       "terminating-gateway",
+			consulSvcName: "terminating-gateway",
+			k8sObjects: func() []runtime.Object {
+				pod := &corev1.Pod{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "terminating-gateway",
+						Namespace: "default",
+						Labels: map[string]string{
+							keyManagedBy: managedByValue,
+						},
+						Annotations: map[string]string{
+							annotationGatewayKind: "terminating",
+						},
+					},
+					Status: corev1.PodStatus{
+						PodIP: "1.2.3.4",
+						Conditions: []corev1.PodCondition{
+							{
+								Type:   corev1.PodReady,
+								Status: corev1.ConditionTrue,
+							},
+						},
+					},
+				}
+				endpoint := &corev1.Endpoints{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "terminating-gateway",
+						Namespace: "default",
+					},
+					Subsets: []corev1.EndpointSubset{
+						{
+							Addresses: []corev1.EndpointAddress{
+								{
+									IP: "1.2.3.4",
+									TargetRef: &corev1.ObjectReference{
+										Kind:      "Pod",
+										Name:      "terminating-gateway",
+										Namespace: "default",
+									},
+								},
+							},
+						},
+					},
+				}
+				return []runtime.Object{pod, endpoint}
+			},
+			expectedConsulSvcInstances: []*api.CatalogService{
+				{
+					ServiceID:      "terminating-gateway",
+					ServiceName:    "terminating-gateway",
+					ServiceAddress: "1.2.3.4",
+					ServicePort:    8443,
+					ServiceMeta: map[string]string{
+						MetaKeyPodName:         "terminating-gateway",
+						MetaKeyKubeServiceName: "terminating-gateway",
+						MetaKeyKubeNS:          "default",
+						MetaKeyManagedBy:       managedByValue,
+					},
+					ServiceTags:  []string{},
+					ServiceProxy: &api.AgentServiceConnectProxyConfig{},
+				},
+			},
+			expectedProxySvcInstances: []*api.CatalogService{},
+			expectedHealthChecks: []*api.HealthCheck{
+				{
+					CheckID:     "default/terminating-gateway",
+					ServiceName: "terminating-gateway",
+					ServiceID:   "terminating-gateway",
+					Name:        ConsulKubernetesCheckName,
+					Status:      api.HealthPassing,
+					Output:      kubernetesSuccessReasonMsg,
+					Type:        ConsulKubernetesCheckType,
+				},
+			},
+		},
+		{
+			name:           "Terminating Gateway with Metrics enabled",
+			metricsEnabled: true,
+			svcName:        "terminating-gateway",
+			consulSvcName:  "terminating-gateway",
+			k8sObjects: func() []runtime.Object {
+				pod := &corev1.Pod{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "terminating-gateway",
+						Namespace: "default",
+						Labels: map[string]string{
+							keyManagedBy: managedByValue,
+						},
+						Annotations: map[string]string{
+							annotationGatewayKind: "terminating",
+						},
+					},
+					Status: corev1.PodStatus{
+						PodIP: "1.2.3.4",
+						Conditions: []corev1.PodCondition{
+							{
+								Type:   corev1.PodReady,
+								Status: corev1.ConditionTrue,
+							},
+						},
+					},
+				}
+				endpoint := &corev1.Endpoints{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "terminating-gateway",
+						Namespace: "default",
+					},
+					Subsets: []corev1.EndpointSubset{
+						{
+							Addresses: []corev1.EndpointAddress{
+								{
+									IP: "1.2.3.4",
+									TargetRef: &corev1.ObjectReference{
+										Kind:      "Pod",
+										Name:      "terminating-gateway",
+										Namespace: "default",
+									},
+								},
+							},
+						},
+					},
+				}
+				return []runtime.Object{pod, endpoint}
+			},
+			expectedConsulSvcInstances: []*api.CatalogService{
+				{
+					ServiceID:      "terminating-gateway",
+					ServiceName:    "terminating-gateway",
+					ServiceAddress: "1.2.3.4",
+					ServicePort:    8443,
+					ServiceMeta: map[string]string{
+						MetaKeyPodName:         "terminating-gateway",
+						MetaKeyKubeServiceName: "terminating-gateway",
+						MetaKeyKubeNS:          "default",
+						MetaKeyManagedBy:       managedByValue,
+					},
+					ServiceTags: []string{},
+					ServiceProxy: &api.AgentServiceConnectProxyConfig{
+						Config: map[string]interface{}{
+							"envoy_prometheus_bind_addr": "1.2.3.4:20200",
+						},
+					},
+				},
+			},
+			expectedProxySvcInstances: []*api.CatalogService{},
+			expectedHealthChecks: []*api.HealthCheck{
+				{
+					CheckID:     "default/terminating-gateway",
+					ServiceName: "terminating-gateway",
+					ServiceID:   "terminating-gateway",
+					Name:        ConsulKubernetesCheckName,
+					Status:      api.HealthPassing,
+					Output:      kubernetesSuccessReasonMsg,
+					Type:        ConsulKubernetesCheckType,
+				},
+			},
 		},
 		{
 			name:          "Endpoints with multiple addresses",
@@ -3307,6 +3465,27 @@ func TestReconcileDeleteEndpoint(t *testing.T) {
 						MetaKeyKubeNS:          "default",
 						MetaKeyManagedBy:       managedByValue,
 						MetaKeyPodName:         "pod1",
+					},
+				},
+			},
+			enableACLs: true,
+		},
+		{
+			name:                      "When a Terminating Gateway service is deleted, its ACL token should get deleted.",
+			consulSvcName:             "service-deleted",
+			expectServicesToBeDeleted: true,
+			initialConsulSvcs: []*api.AgentService{
+				{
+					Kind:    api.ServiceKindTerminatingGateway,
+					ID:      "terminating-gateway",
+					Service: "service-deleted",
+					Port:    8443,
+					Address: "1.2.3.4",
+					Meta: map[string]string{
+						MetaKeyPodName:         "terminating-gateway",
+						MetaKeyKubeServiceName: "service-deleted",
+						MetaKeyKubeNS:          "default",
+						MetaKeyManagedBy:       managedByValue,
 					},
 				},
 			},
@@ -5680,6 +5859,98 @@ func Test_GetWANData(t *testing.T) {
 				require.Equal(t, c.wanPort, port)
 			} else {
 				require.EqualError(t, err, c.expErr)
+			}
+		})
+	}
+}
+
+func TestCreateTerminatingGatewayRegistrations(t *testing.T) {
+	cases := map[string]struct {
+		podName          string
+		serviceName      string
+		serviceNamespace string
+		annotations      map[string]string
+		service          *api.AgentService
+		metricsConfig    MetricsConfig
+	}{
+		"Terminating Gateway Default": {
+			podName:          "terminating-gateway",
+			serviceName:      "terminating-gateway",
+			serviceNamespace: "consul",
+			annotations: map[string]string{
+				annotationGatewayKind: "terminating",
+			},
+		},
+		"Terminating Gateway with Consul Namespace": {
+			podName:          "terminating-gateway",
+			serviceName:      "terminating-gateway",
+			serviceNamespace: "consul",
+			annotations: map[string]string{
+				annotationGatewayKind:                 "terminating",
+				annotationTerminatingGatewayNamespace: "consul-namespace",
+			},
+		},
+		"Terminating Gateway with Metrics Enabled": {
+			podName:          "terminating-gateway",
+			serviceName:      "terminating-gateway",
+			serviceNamespace: "consul",
+			annotations: map[string]string{
+				annotationGatewayKind: "terminating",
+			},
+			metricsConfig: MetricsConfig{
+				DefaultEnableMetrics: true,
+				EnableGatewayMetrics: true,
+			},
+		},
+	}
+
+	for name, c := range cases {
+		t.Run(name, func(t *testing.T) {
+			pod := corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace:   "consul",
+					Name:        c.podName,
+					Annotations: c.annotations,
+				},
+				Status: corev1.PodStatus{
+					PodIP: "1.2.3.4",
+				},
+			}
+			serviceEndpoint := corev1.Endpoints{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: c.serviceNamespace,
+					Name:      c.serviceName,
+				},
+			}
+
+			r := EndpointsController{
+				MetricsConfig: c.metricsConfig,
+			}
+
+			registration, err := r.createGatewayRegistrations(pod, serviceEndpoint, api.HealthPassing)
+			require.NoError(t, err)
+
+			// TODO These will always be true for terminating-gateway, parameterize them when merging with Ashwin.
+			require.Equal(t, api.ServiceKindTerminatingGateway, registration.Service.Kind)
+			require.Equal(t, "terminating-gateway", registration.Service.Service)
+			require.Equal(t, 8443, registration.Service.Port)
+
+			require.Equal(t, c.podName, registration.Service.ID)
+			require.Equal(t, "1.2.3.4", registration.Service.Address)
+			require.Equal(t, c.podName, registration.Service.Meta[MetaKeyPodName])
+			require.Equal(t, c.serviceName, registration.Service.Meta[MetaKeyKubeServiceName])
+			require.Equal(t, c.serviceNamespace, registration.Service.Meta[MetaKeyKubeNS])
+
+			require.Equal(t, fmt.Sprintf("%s/%s", "consul", c.podName), registration.Check.CheckID)
+			require.Equal(t, api.HealthPassing, registration.Check.Status)
+			require.Equal(t, c.podName, registration.Check.ServiceID)
+
+			if value, ok := c.annotations[annotationConsulNamespace]; ok {
+				require.Equal(t, value, registration.Service.Namespace)
+			}
+
+			if c.metricsConfig.DefaultEnableMetrics && c.metricsConfig.EnableGatewayMetrics {
+				require.Equal(t, "1.2.3.4:20200", registration.Service.Proxy.Config["envoy_prometheus_bind_addr"])
 			}
 		})
 	}

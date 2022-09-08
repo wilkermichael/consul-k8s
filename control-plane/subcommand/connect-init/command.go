@@ -77,7 +77,7 @@ func (c *Command) init() {
 	c.flagSet.StringVar(&c.flagProxyIDFile, "proxy-id-file", defaultProxyIDFile, "File name where proxy's Consul service ID should be saved.")
 	c.flagSet.BoolVar(&c.flagMultiPort, "multiport", false, "If the pod is a multi port pod.")
 	c.flagSet.BoolVar(&c.flagGateway, "gateway", false, "If the pod is a Consul gateway pod.")
-	c.flagSet.StringVar(&c.flagGatewayKind, "gateway-kind", "", "Name of the gateway that is being registered.")
+	c.flagSet.StringVar(&c.flagGatewayKind, "gateway-kind", "", "Kind of gateway that is being registered: ingress, terminating, or mesh.")
 	c.flagSet.StringVar(&c.flagLogLevel, "log-level", "info",
 		"Log verbosity level. Supported values (in order of detail) are \"trace\", "+
 			"\"debug\", \"info\", \"warn\", and \"error\".")

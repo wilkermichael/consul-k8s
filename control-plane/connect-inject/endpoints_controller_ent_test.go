@@ -93,6 +93,9 @@ func TestReconcileCreateEndpointWithNamespaces(t *testing.T) {
 					annotationMeshGatewayWANPort:       "443",
 					annotationMeshGatewayContainerPort: "8443",
 					annotationGatewayKind:              "mesh"})
+				terminatingGateway := createGatewayWithNamespace("terminating-gateway", testCase.SourceKubeNS, "4.4.4.4", map[string]string{
+					annotationGatewayKind: "terminating",
+				})
 				endpointWithAddresses := &corev1.Endpoints{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "service-created",
@@ -125,11 +128,19 @@ func TestReconcileCreateEndpointWithNamespaces(t *testing.T) {
 										Namespace: testCase.SourceKubeNS,
 									},
 								},
+								{
+									IP: "4.4.4.4",
+									TargetRef: &corev1.ObjectReference{
+										Kind:      "Pod",
+										Name:      "terminating-gateway",
+										Namespace: testCase.SourceKubeNS,
+									},
+								},
 							},
 						},
 					},
 				}
-				return []runtime.Object{pod1, pod2, meshGateway, endpointWithAddresses}
+				return []runtime.Object{pod1, pod2, meshGateway, terminatingGateway, endpointWithAddresses}
 			},
 			expectedConsulSvcInstances: []*api.CatalogService{
 				{
@@ -166,6 +177,15 @@ func TestReconcileCreateEndpointWithNamespaces(t *testing.T) {
 						},
 					},
 					Namespace: "default",
+				},
+				{
+					ServiceID:      "terminating-gateway",
+					ServiceName:    "terminating-gateway",
+					ServiceAddress: "4.4.4.4",
+					ServiceMeta:    map[string]string{MetaKeyPodName: "terminating-gateway", MetaKeyKubeServiceName: "service-created", MetaKeyKubeNS: testCase.SourceKubeNS, MetaKeyManagedBy: managedByValue},
+					ServiceTags:    []string{},
+					ServicePort:    8443,
+					Namespace:      "default",
 				},
 			},
 			expectedProxySvcInstances: []*api.CatalogService{
@@ -241,6 +261,16 @@ func TestReconcileCreateEndpointWithNamespaces(t *testing.T) {
 					CheckID:     fmt.Sprintf("%s/mesh-gateway", testCase.SourceKubeNS),
 					ServiceName: "mesh-gateway",
 					ServiceID:   "mesh-gateway",
+					Name:        ConsulKubernetesCheckName,
+					Status:      api.HealthPassing,
+					Output:      kubernetesSuccessReasonMsg,
+					Type:        ConsulKubernetesCheckType,
+					Namespace:   "default",
+				},
+				{
+					CheckID:     fmt.Sprintf("%s/terminating-gateway", testCase.SourceKubeNS),
+					ServiceName: "terminating-gateway",
+					ServiceID:   "terminating-gateway",
 					Name:        ConsulKubernetesCheckName,
 					Status:      api.HealthPassing,
 					Output:      kubernetesSuccessReasonMsg,
@@ -333,12 +363,8 @@ func TestReconcileCreateEndpointWithNamespaces(t *testing.T) {
 			// Check that the Consul health checks was created for the k8s pod.
 			for _, expectedCheck := range setup.expectedHealthChecks {
 				var checks api.HealthChecks
-				filter := fmt.Sprintf("CheckID == `%s`", expectedCheck.CheckID)
+				filter := fmt.Sprintf("ServiceID == `%s`", expectedCheck.ServiceID)
 				checks, _, err := consulClient.Health().Checks(expectedCheck.ServiceName, &api.QueryOptions{Filter: filter})
-				if expectedCheck.ServiceName == "mesh-gateway" {
-					checks, _, err = consulClient.Health().Checks("mesh-gateway", &api.QueryOptions{Namespace: "default"})
-					require.NoError(t, err)
-				}
 				require.NoError(t, err)
 				require.Equal(t, len(checks), 1)
 				var ignoredFields = []string{"Node", "Definition", "Partition", "CreateIndex", "ModifyIndex", "ServiceTags"}

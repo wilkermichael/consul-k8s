@@ -593,11 +593,6 @@ func (r *EndpointsController) createServiceRegistrations(pod corev1.Pod, service
 
 // createGatewayRegistrations creates the gateway service registrations with the information from the Pod.
 func (r *EndpointsController) createGatewayRegistrations(pod corev1.Pod, serviceEndpoints corev1.Endpoints, healthStatus string) (*api.CatalogRegistration, error) {
-	wanAddr, wanPort, err := r.getWanData(pod, serviceEndpoints)
-	if err != nil {
-		return nil, err
-	}
-
 	meta := map[string]string{
 		MetaKeyPodName:         pod.Name,
 		MetaKeyKubeServiceName: serviceEndpoints.Name,
@@ -609,29 +604,51 @@ func (r *EndpointsController) createGatewayRegistrations(pod corev1.Pod, service
 		meta[MetaKeyConsulWANFederation] = "1"
 	}
 
-	port, err := strconv.Atoi(pod.Annotations[annotationMeshGatewayContainerPort])
-	if err != nil {
-		return nil, err
-	}
-
 	service := &api.AgentService{
-		Kind:    api.ServiceKindMeshGateway,
 		ID:      pod.Name,
-		Service: "mesh-gateway",
-		Port:    port,
 		Address: pod.Status.PodIP,
 		Meta:    meta,
-		TaggedAddresses: map[string]api.ServiceAddress{
-			"lan": api.ServiceAddress{
+	}
+
+	// Set the service values.
+	gatewayKind := pod.Annotations[annotationGatewayKind]
+	switch gatewayKind {
+	case "mesh":
+		service.Kind = api.ServiceKindMeshGateway
+		service.Service = "mesh-gateway"
+
+		port, err := strconv.Atoi(pod.Annotations[annotationMeshGatewayContainerPort])
+		if err != nil {
+			return nil, err
+		}
+		service.Port = port
+
+		wanAddr, wanPort, err := r.getWanData(pod, serviceEndpoints)
+		if err != nil {
+			return nil, err
+		}
+		service.TaggedAddresses = map[string]api.ServiceAddress{
+			"lan": {
 				Address: pod.Status.PodIP,
 				Port:    port,
 			},
-			"wan": api.ServiceAddress{
+			"wan": {
 				Address: wanAddr,
 				Port:    wanPort,
 			},
-		},
+		}
+
+		service.Namespace = r.consulNamespace(pod.Namespace)
+	case "terminating":
+		service.Kind = api.ServiceKindTerminatingGateway
+		service.Service = "terminating-gateway"
+		service.Port = 8443
+
+		if consulNS, ok := pod.Annotations[annotationTerminatingGatewayNamespace]; ok {
+			service.Namespace = consulNS
+		}
 	}
+
 	if r.MetricsConfig.DefaultEnableMetrics && r.MetricsConfig.EnableGatewayMetrics {
 		service.Proxy = &api.AgentServiceConnectProxyConfig{
 			Config: map[string]interface{}{
@@ -639,6 +656,7 @@ func (r *EndpointsController) createGatewayRegistrations(pod corev1.Pod, service
 			},
 		}
 	}
+
 	serviceRegistration := &api.CatalogRegistration{
 		Node:    ConsulNodeName,
 		Address: ConsulNodeAddress,
