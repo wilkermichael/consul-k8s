@@ -128,8 +128,7 @@ spec:
         - name: extra-config
           emptyDir: {}
         - name: consul-data
-          emptyDir:
-            medium: "Memory"
+          emptyDir: {}
         {{- if .Values.global.tls.enabled }}
         {{- if not .Values.global.secretsBackend.vault.enabled }}
         - name: consul-ca-cert

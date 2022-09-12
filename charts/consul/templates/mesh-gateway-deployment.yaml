@@ -77,8 +77,7 @@ spec:
         - name: consul-bin
           emptyDir: {}
         - name: consul-service
-          emptyDir:
-            medium: "Memory"
+          emptyDir: {}
         {{- if .Values.global.tls.enabled }}
         {{- if not (and .Values.externalServers.enabled .Values.externalServers.useSystemRoots) }}
         - name: consul-ca-cert
@@ -94,8 +93,7 @@ spec:
         {{- end }}
         {{- if .Values.global.tls.enableAutoEncrypt }}
         - name: consul-auto-encrypt-ca-cert
-          emptyDir:
-            medium: "Memory"
+          emptyDir: {}
         {{- end }}
         {{- end }}
       {{- if .Values.meshGateway.hostNetwork }}
