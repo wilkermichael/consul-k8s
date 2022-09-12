@@ -504,7 +504,7 @@ jobs:
     machine:
       image: ubuntu-2004:202010-01
     resource_class: xlarge
-    parallelism: 6
+    parallelism: 1
     steps:
       - checkout
       - install-prereqs
@@ -536,7 +536,7 @@ jobs:
     machine:
       image: ubuntu-2004:202010-01
     resource_class: xlarge
-    parallelism: 6
+    parallelism: 1
     steps:
       - checkout
       - install-prereqs
