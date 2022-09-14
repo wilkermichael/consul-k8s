@@ -113,7 +113,8 @@ commands:
                           ${ENABLE_ENTERPRISE:+-enable-enterprise} \
                           -enable-multi-cluster \
                           -debug-directory="$TEST_RESULTS/debug" \
-                          -consul-k8s-image=<< parameters.consul-k8s-image >>
+                          -consul-k8s-image=<< parameters.consul-k8s-image >> \
+                          -run ^TestConnectInject$    
                     then
                       echo "Tests in ${pkg} failed, aborting early"
                       exit_code=1
@@ -144,7 +145,8 @@ commands:
                       ${ENABLE_ENTERPRISE:+-enable-enterprise} \
                       -enable-multi-cluster \
                       -debug-directory="$TEST_RESULTS/debug" \
-                      -consul-k8s-image=<< parameters.consul-k8s-image >>
+                      -consul-k8s-image=<< parameters.consul-k8s-image >> \
+                      -run ^TestConnectInject$
 
 jobs:
   go-fmt-and-vet-control-plane:
@@ -1226,13 +1228,13 @@ workflows:
           requires:
             - dev-upload-docker
   nightly-acceptance-tests:
-    triggers:
-      - schedule:
-          cron: "0 0 * * *"
-          filters:
-            branches:
-              only:
-                - main
+    # triggers:
+    #   - schedule:
+    #       cron: "0 0 * * *"
+    #       filters:
+    #         branches:
+    #           only:
+    #             - main
     jobs:
       - build-distro:
           OS: "linux"
